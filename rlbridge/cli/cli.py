@@ -1,6 +1,5 @@
-import sys
-
 import argparse
+import sys
 
 from . import demogame
 
