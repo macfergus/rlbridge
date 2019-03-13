@@ -11,6 +11,16 @@ __all__ = [
 ]
 
 
+class Contract:
+    def __init__(self, declarer, bid):
+        self.declarer = declarer
+        self.bid = bid
+
+    @property
+    def trump(self):
+        return self.bid.denomination.trump_suit
+
+
 class Denomination:
     def __init__(self, trump_suit=None, is_notrump=False):
         assert (trump_suit is None) ^ (is_notrump is False)
@@ -48,6 +58,10 @@ class Denomination:
             return True
         return self.trump_suit.value < other.trump_suit.value
 
+    def __eq__(self, other):
+        return self.trump_suit == other.trump_suit and \
+            self.is_notrump == other.is_notrump
+
     def __str__(self):
         if self.trump_suit == Suit.clubs:
             return '♣'
@@ -83,6 +97,24 @@ class Bid:
 
     def __str__(self):
         return '{}{}'.format(self.tricks, self.denomination)
+
+    @classmethod
+    def of(cls, bid_str):
+        tricks = int(bid_str[0])
+        denom_str = bid_str[1:]
+        if denom_str in ('C', 'c', '♣'):
+            denomination = Denomination.suit(Suit.clubs)
+        elif denom_str in ('D', 'd', '♦'):
+            denomination = Denomination.suit(Suit.diamonds)
+        elif denom_str in ('H', 'h', '♥'):
+            denomination = Denomination.suit(Suit.hearts)
+        elif denom_str in ('S', 's', '♠'):
+            denomination = Denomination.suit(Suit.spades)
+        elif denom_str in ('NT', 'nt'):
+            denomination = Denomination.notrump()
+        else:
+            raise ValueError(denom_str)
+        return Bid(denomination, tricks)
 
 
 ALL_BIDS = [
@@ -127,15 +159,28 @@ class Call:
             return 'pass'
         raise ValueError()
 
+    @classmethod
+    def of(cls, call_str):
+        """Helper for tests."""
+        if call_str in ('X', 'x'):
+            return Call.double()
+        if call_str in ('XX', 'xx'):
+            return Call.redouble()
+        if call_str == 'pass':
+            return Call.pass_turn()
+        return Call.bid(Bid.of(call_str))
+
 
 class Auction:
-    def __init__(self, dealer, calls=None, last_bid=None, next_player=None):
+    def __init__(self, dealer, calls=None, last_bid=None, last_bidder=None,
+                 next_player=None):
         self.dealer = dealer
         if calls is None:
             self.calls = []
         else:
             self.calls = list(calls)
         self.last_bid = last_bid
+        self.last_bidder = last_bidder
         if next_player is None:
             self.next_player = dealer
         else:
@@ -149,15 +194,43 @@ class Auction:
 
     def is_over(self):
         pass_call = Call.pass_turn()
-        return len(self.calls) >= 3 and \
+        return len(self.calls) > 3 and \
             self.calls[-1] == pass_call and \
             self.calls[-2] == pass_call and \
             self.calls[-3] == pass_call
 
+    def result(self):
+        """Return the result of the auction.
+
+        If there were no bids, returns None.
+        """
+        assert self.is_over()
+        if self.last_bid is None:
+            return None
+        # Figure out the declarer. The declarer is the first person to
+        # on the winning partnership to name the denomination of the
+        # winning bid.
+        declarer = None
+        winning_denom = self.last_bid.denomination
+        player = self.dealer
+        for call in self.calls:
+            if call.is_bid and call.bid.denomination == winning_denom and \
+                    player.is_teammate(self.last_bidder):
+                declarer = player
+                break
+            player = player.rotate()
+        assert declarer is not None
+        return Contract(
+            declarer=declarer,
+            bid=self.last_bid
+        )
+
     def apply(self, call):
+        assert not self.is_over()
         return Auction(
             dealer=self.dealer,
             calls=self.calls + [call],
             last_bid=call.bid if call.is_bid else self.last_bid,
+            last_bidder=self.next_player if call.is_bid else self.last_bidder,
             next_player=self.next_player.rotate()
         )

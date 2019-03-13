@@ -20,3 +20,8 @@ class Player(enum.Enum):
         if self == Player.south:
             return Player.west
         return Player.north
+
+    def is_teammate(self, other):
+        if self in (Player.north, Player.south):
+            return other in (Player.north, Player.south)
+        return other in (Player.east, Player.west)
