@@ -13,21 +13,31 @@ class Phase(enum.Enum):
     auction = 1
 
 
+class Action:
+    def __init__(self, call=None):
+        self.call = call
+        self.is_call = call is not None
+
+    @classmethod
+    def make_call(cls, call):
+        return Action(call=call)
+
+    def __str__(self):
+        if self.is_call:
+            return str(self.call)
+        assert False
+
+
 class Perspective:
     def __init__(self, phase, auction):
         self.phase = phase
         self.auction = auction
 
-    def legal_calls(self):
-        if self.phase != Phase.auction:
-            return []
-        calls = []
-        last_bid = self.auction.last_bid
-        for bid in ALL_BIDS:
-            if last_bid is None or bid > last_bid:
-                calls.append(Call.bid(bid))
-        calls.append(Call.pass_turn())
-        return calls
+    def legal_actions(self):
+        if self.phase == Phase.auction:
+            return [Action.make_call(call)
+                    for call in self.auction.legal_calls()]
+        return []
 
 
 class GameState:
@@ -66,18 +76,3 @@ class GameState:
         return GameState(
             auction=self.auction.apply(call),
         )
-
-
-class Action:
-    def __init__(self, call=None):
-        self.call = call
-        self.is_call = call is not None
-
-    @classmethod
-    def make_call(cls, call):
-        return Action(call=call)
-
-    def __str__(self):
-        if self.is_call:
-            return str(self.call)
-        assert False

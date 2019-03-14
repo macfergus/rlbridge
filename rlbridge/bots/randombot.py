@@ -9,5 +9,4 @@ __all__ = [
 
 class RandomBot:
     def select_action(self, state):
-        if state.phase == Phase.auction:
-            return Action.make_call(random.choice(state.legal_calls()))
+        return random.choice(state.legal_actions())

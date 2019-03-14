@@ -22,6 +22,17 @@ class Player(enum.Enum):
         return Player.north
 
     def is_teammate(self, other):
+        """Check if the player is on the same team as another player.
+
+        A player counts as its own teammate! So
+        Player.north.is_teammate(Player.north)
+        returns True.
+        """
         if self in (Player.north, Player.south):
             return other in (Player.north, Player.south)
         return other in (Player.east, Player.west)
+
+    def is_opponent(self, other):
+        if self in (Player.north, Player.south):
+            return other in (Player.east, Player.west)
+        return other in (Player.north, Player.south)

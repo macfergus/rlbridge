@@ -187,6 +187,10 @@ class Call:
         return Call.bid(Bid.of(call_str))
 
 
+ALL_CALLS = [Call.bid(bid) for bid in ALL_BIDS] + \
+    [Call.double(), Call.redouble(), Call.pass_turn()]
+
+
 class Auction:
     def __init__(self, dealer, calls=None,
                  last_bid=None, last_bidder=None, last_scale=Scale.undoubled,
@@ -261,3 +265,24 @@ class Auction:
             last_scale=next_scale,
             next_player=self.next_player.rotate()
         )
+
+    def is_legal(self, call):
+        """Check if a call is legal in this auction."""
+        if self.is_over():
+            return False
+        if call.is_pass:
+            return True
+        if call.is_bid:
+            return self.last_bid is None or self.last_bid < call.bid
+        if call.is_double:
+            return self.last_bid is not None and \
+                self.last_bidder.is_opponent(self.next_player) and \
+                self.last_scale == Scale.undoubled
+        if call.is_redouble:
+            return self.last_bid is not None and \
+                self.last_bidder.is_teammate(self.next_player) and \
+                self.last_scale == Scale.doubled
+        return False
+
+    def legal_calls(self):
+        return [call for call in ALL_CALLS if self.is_legal(call)]

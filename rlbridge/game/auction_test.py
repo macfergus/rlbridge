@@ -15,7 +15,7 @@ class DenominationTest(unittest.TestCase):
         self.assertFalse(Denomination.notrump() < Denomination.clubs())
 
 
-class AuctionTest(unittest.TestCase):
+class AuctionResultTest(unittest.TestCase):
     def test_no_contract(self):
         auction = Auction.new_auction(Player.north)
         auction = auction.apply(Call.pass_turn())
@@ -121,3 +121,68 @@ class AuctionTest(unittest.TestCase):
         self.assertTrue(auction.is_over())
         contract = auction.result()
         self.assertEqual(Scale.undoubled, contract.scale)
+
+
+class AuctionIsLegalTest(unittest.TestCase):
+    def test_pass(self):
+        # Pass is always legal.
+        auction = Auction.new_auction(Player.north)
+        self.assertTrue(auction.is_legal(Call.pass_turn()))
+        auction = auction.apply(Call.of('1S'))
+        self.assertTrue(auction.is_legal(Call.pass_turn()))
+
+    def test_suit_priority(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S'))
+        self.assertFalse(auction.is_legal(Call.of('1H')))
+        self.assertTrue(auction.is_legal(Call.of('1NT')))
+        self.assertTrue(auction.is_legal(Call.of('2H')))
+
+    def test_cannot_double_open(self):
+        auction = Auction.new_auction(Player.north)
+        self.assertFalse(auction.is_legal(Call.double()))
+
+    def test_can_double_opponent_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S'))
+        self.assertTrue(auction.is_legal(Call.double()))
+
+    def test_can_double_opponent_bid_after_passes(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.pass_turn()) \
+            .apply(Call.pass_turn())
+        self.assertTrue(auction.is_legal(Call.double()))
+
+    def test_cannot_double_partner_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.pass_turn())
+        self.assertFalse(auction.is_legal(Call.double()))
+
+    def test_cannot_double_doubled_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.of('X')) \
+            .apply(Call.pass_turn())
+        self.assertFalse(auction.is_legal(Call.double()))
+
+    def test_cannot_redouble_undoubled_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.pass_turn())
+        self.assertFalse(auction.is_legal(Call.redouble()))
+
+    def test_can_redouble_partner_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.of('X'))
+        self.assertTrue(auction.is_legal(Call.redouble()))
+
+    def test_can_redouble_own_bid(self):
+        auction = Auction.new_auction(Player.north) \
+            .apply(Call.of('1S')) \
+            .apply(Call.of('X')) \
+            .apply(Call.of('pass')) \
+            .apply(Call.of('pass'))
+        self.assertTrue(auction.is_legal(Call.redouble()))
