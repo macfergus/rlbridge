@@ -77,3 +77,17 @@ class AuctionTest(unittest.TestCase):
         self.assertEqual(2, contract.bid.tricks)
         self.assertEqual(Suit.spades, contract.trump)
         self.assertEqual(Player.east, contract.declarer)
+
+    def test_change_of_suit(self):
+        # North opens spades, east switches to clubs.
+        auction = Auction.new_auction(Player.north)
+        auction = auction.apply(Call.of('1S'))
+        auction = auction.apply(Call.of('2C'))
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        self.assertTrue(auction.is_over())
+        contract = auction.result()
+        self.assertEqual(2, contract.bid.tricks)
+        self.assertEqual(Suit.clubs, contract.trump)
+        self.assertEqual(Player.east, contract.declarer)
