@@ -1,7 +1,7 @@
 import unittest
 
 from ..cards import Suit
-from .auction import Auction, Call, Denomination
+from .auction import Auction, Call, Denomination, Scale
 from .player import Player
 
 
@@ -91,3 +91,33 @@ class AuctionTest(unittest.TestCase):
         self.assertEqual(2, contract.bid.tricks)
         self.assertEqual(Suit.clubs, contract.trump)
         self.assertEqual(Player.east, contract.declarer)
+
+    def test_doubling(self):
+        # North opens spades, west doubles.
+        auction = Auction.new_auction(Player.north)
+        auction = auction.apply(Call.of('1S'))
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.double())
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        self.assertTrue(auction.is_over())
+        contract = auction.result()
+        self.assertEqual(1, contract.bid.tricks)
+        self.assertEqual(Suit.spades, contract.trump)
+        self.assertEqual(Player.north, contract.declarer)
+        self.assertEqual(Scale.doubled, contract.scale)
+
+    def test_doubling_then_change_bid(self):
+        # North opens spades, east double, south changes suit.
+        auction = Auction.new_auction(Player.north)
+        auction = auction.apply(Call.of('1S'))
+        auction = auction.apply(Call.double())
+        auction = auction.apply(Call.of('2C'))
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        auction = auction.apply(Call.pass_turn())
+        self.assertTrue(auction.is_over())
+        contract = auction.result()
+        self.assertEqual(Scale.undoubled, contract.scale)

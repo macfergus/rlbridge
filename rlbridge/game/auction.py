@@ -1,3 +1,5 @@
+import enum
+
 from ..cards import Suit
 
 __all__ = [
@@ -10,10 +12,17 @@ __all__ = [
 ]
 
 
+class Scale(enum.Enum):
+    undoubled = 1
+    doubled = 2
+    redoubled = 3
+
+
 class Contract:
-    def __init__(self, declarer, bid):
+    def __init__(self, declarer, bid, scale):
         self.declarer = declarer
         self.bid = bid
+        self.scale = scale
 
     @property
     def trump(self):
@@ -140,6 +149,14 @@ class Call:
     def pass_turn(cls):
         return Call(is_pass=True)
 
+    @classmethod
+    def double(cls):
+        return Call(double=True)
+
+    @classmethod
+    def redouble(cls):
+        return Call(redouble=True)
+
     def __eq__(self, other):
         return self.is_pass == other.is_pass and \
             self.is_redouble == other.is_redouble and \
@@ -171,7 +188,8 @@ class Call:
 
 
 class Auction:
-    def __init__(self, dealer, calls=None, last_bid=None, last_bidder=None,
+    def __init__(self, dealer, calls=None,
+                 last_bid=None, last_bidder=None, last_scale=Scale.undoubled,
                  next_player=None):
         self.dealer = dealer
         if calls is None:
@@ -180,6 +198,7 @@ class Auction:
             self.calls = list(calls)
         self.last_bid = last_bid
         self.last_bidder = last_bidder
+        self.last_scale = last_scale
         if next_player is None:
             self.next_player = dealer
         else:
@@ -221,15 +240,24 @@ class Auction:
         assert declarer is not None
         return Contract(
             declarer=declarer,
-            bid=self.last_bid
+            bid=self.last_bid,
+            scale=self.last_scale
         )
 
     def apply(self, call):
         assert not self.is_over()
+        next_scale = self.last_scale
+        if call.is_bid:
+            next_scale = Scale.undoubled
+        if call.is_double:
+            next_scale = Scale.doubled
+        if call.is_redouble:
+            next_scale = Scale.redoubled
         return Auction(
             dealer=self.dealer,
             calls=self.calls + [call],
             last_bid=call.bid if call.is_bid else self.last_bid,
             last_bidder=self.next_player if call.is_bid else self.last_bidder,
+            last_scale=next_scale,
             next_player=self.next_player.rotate()
         )
