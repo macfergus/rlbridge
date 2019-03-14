@@ -1,6 +1,5 @@
 from ..cards import Suit
 
-
 __all__ = [
     'Denomination',
     'ALL_DENOMINATIONS',
