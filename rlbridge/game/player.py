@@ -36,3 +36,12 @@ class Player(enum.Enum):
         if self in (Player.north, Player.south):
             return other in (Player.east, Player.west)
         return other in (Player.north, Player.south)
+
+    def __str__(self):
+        if self == Player.north:
+            return 'N'
+        if self == Player.east:
+            return 'E'
+        if self == Player.south:
+            return 'S'
+        return 'W'

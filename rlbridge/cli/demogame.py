@@ -11,10 +11,10 @@ class DemoGame(Command):
             Player.south: bots.randombot.RandomBot(),
             Player.west: bots.randombot.RandomBot(),
         }
-        hand = GameState.new_hand(cards.new_deal(), dealer=Player.north)
+        hand = GameState.new_deal(cards.new_deal(), dealer=Player.north)
         while not hand.is_over():
             next_player = hand.next_player
             agent = agents[next_player]
             action = agent.select_action(hand.perspective(next_player))
-            print(action)
+            print('{}: {}'.format(next_player, action))
             hand = hand.apply(action)
