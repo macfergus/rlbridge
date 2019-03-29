@@ -1,4 +1,8 @@
 import copy
+import random
+
+from ..cards import Card, Suit
+from ..players import Player
 
 __all__ = [
     'Deal',
@@ -25,6 +29,12 @@ class Hand:
     def without(self, card):
         assert card in self.cards
         return Hand(self.cards - {card})
+
+    def __iter__(self):
+        yield from self.cards
+
+    def is_empty(self):
+        return len(self.cards) == 0
 
 
 class Hands:
@@ -55,4 +65,15 @@ class Deal:
 
 
 def new_deal():
-    pass
+    deck = [
+        Card(rank, suit)
+        for rank in range(2, 15)
+        for suit in [Suit.clubs, Suit.diamonds, Suit.hearts, Suit.spades]
+    ]
+    random.shuffle(deck)
+    return Deal(Hands({
+        Player.north: Hand(deck[:13]),
+        Player.east: Hand(deck[13:26]),
+        Player.west: Hand(deck[26:39]),
+        Player.south: Hand(deck[39:]),
+    }))

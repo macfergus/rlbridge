@@ -1,8 +1,8 @@
 import unittest
 
 from ..cards import Suit
+from ..players import Player
 from .auction import Auction, Call, Denomination, Scale
-from .player import Player
 
 
 class DenominationTest(unittest.TestCase):

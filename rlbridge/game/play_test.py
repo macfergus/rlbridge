@@ -1,9 +1,9 @@
 import unittest
 
 from ..cards import Card, Deal
+from ..players import Player
 from .auction import Bid, Contract, Scale
 from .play import Play, PlayState
-from .player import Player
 
 EXAMPLE_DEAL = Deal.from_dict({
     Player.north: map(Card.of, [

@@ -12,24 +12,30 @@ __all__ = [
 
 class Phase(enum.Enum):
     auction = 1
-    # Leading the first trick, before dummy is revealed
-    opening = 2
-    # Trick-taking after dummy is revealed
-    play = 3
+    play = 2
 
 
 class Action:
-    def __init__(self, call=None):
+    def __init__(self, call=None, play=None):
+        assert (call is not None) ^ (play is not None)
         self.call = call
+        self.play = play
         self.is_call = call is not None
+        self.is_play = play is not None
 
     @classmethod
     def make_call(cls, call):
         return Action(call=call)
 
+    @classmethod
+    def make_play(cls, play):
+        return Action(play=play)
+
     def __str__(self):
         if self.is_call:
             return str(self.call)
+        if self.is_play:
+            return str(self.play)
         assert False
 
 
@@ -71,7 +77,7 @@ class GameState:
         )
 
     def is_over(self):
-        return self.phase == Phase.play
+        return self.phase == Phase.play and self.playstate.is_over()
 
     def perspective(self, player):
         return Perspective(
@@ -84,6 +90,8 @@ class GameState:
     def apply(self, action):
         if self.phase == Phase.auction:
             return self.apply_call(action.call)
+        if self.phase == Phase.play:
+            return self.apply_play(action.play)
         raise ValueError(action)
 
     def apply_call(self, call):
@@ -92,11 +100,21 @@ class GameState:
         next_auction = self.auction.apply(call)
         playstate = None
         if next_auction.is_over():
-            next_phase = Phase.opening
-            playstate = PlayState.open_play(next_auction.result())
+            next_phase = Phase.play
+            playstate = PlayState.open_play(next_auction.result(), self.deal)
         return GameState(
             deal=self.deal,
             phase=next_phase,
             auction=next_auction,
             playstate=playstate
+        )
+
+    def apply_play(self, play):
+        assert self.phase == Phase.play
+        next_playstate = self.playstate.apply(play)
+        return GameState(
+            deal=self.deal,
+            phase=self.phase,
+            auction=self.auction,
+            playstate=next_playstate
         )

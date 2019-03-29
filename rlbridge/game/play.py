@@ -68,6 +68,9 @@ class Play:
         """Helper for tests."""
         return cls(Card.of(play_str))
 
+    def __str__(self):
+        return str(self.card)
+
 
 class PlayState:
     def __init__(self, trump_suit, next_player, hands,
@@ -88,8 +91,15 @@ class PlayState:
                     return False
         return True
 
+    def is_over(self):
+        return self.hands[self.next_player].is_empty()
+
     def legal_plays(self):
-        pass
+        plays = []
+        for card in self.hands[self.next_player]:
+            if self.is_legal(Play(card)):
+                plays.append(Play(card))
+        return plays
 
     def apply(self, play):
         assert self.is_legal(play)

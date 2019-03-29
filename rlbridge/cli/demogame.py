@@ -1,5 +1,6 @@
 from .. import bots, cards
-from ..game import GameState, Player
+from ..game import GameState
+from ..players import Player
 from .command import Command
 
 

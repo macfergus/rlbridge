@@ -22,3 +22,14 @@ class Suit(enum.Enum):
         elif suit_str in ('S', 's', '♠'):
             return Suit.spades
         raise ValueError(suit_str)
+
+    def __str__(self):
+        if self == Suit.clubs:
+            return '♣'
+        if self == Suit.diamonds:
+            return '♦'
+        if self == Suit.hearts:
+            return '♥'
+        if self == Suit.spades:
+            return '♠'
+        raise ValueError(self)
