@@ -93,6 +93,7 @@ class PlayState:
 
     def apply(self, play):
         assert self.is_legal(play)
+        next_hands = self.hands.after_removing(self.next_player, play.card)
         next_trick = self.current_trick.apply(play)
         next_player = self.next_player.rotate()
         completed_tricks = self.completed_tricks
@@ -103,7 +104,7 @@ class PlayState:
         return PlayState(
             trump_suit=self.trump_suit,
             next_player=next_player,
-            hands=self.hands,
+            hands=next_hands,
             completed_tricks=completed_tricks,
             current_trick=next_trick)
 

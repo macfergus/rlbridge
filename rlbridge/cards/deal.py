@@ -1,3 +1,5 @@
+import copy
+
 __all__ = [
     'Deal',
     'new_deal',
@@ -20,6 +22,10 @@ class Hand:
     def __str__(self):
         return ' '.join(str(card) for card in self.cards)
 
+    def without(self, card):
+        assert card in self.cards
+        return Hand(self.cards - {card})
+
 
 class Hands:
     def __init__(self, hands):
@@ -27,6 +33,11 @@ class Hands:
 
     def __getitem__(self, player):
         return self.hands[player]
+
+    def after_removing(self, player, card):
+        next_hands = copy.copy(self.hands)
+        next_hands[player] = self.hands[player].without(card)
+        return Hands(next_hands)
 
 
 class Deal:

@@ -91,3 +91,13 @@ class IsLegalTest(unittest.TestCase):
                 .apply(Play.of("2H"))  # north
         )
         self.assertEqual(Player.south, game.next_player)
+
+    def test_cannot_play_card_twice(self):
+        game = (
+            start_play(declarer=Player.north)
+                .apply(Play.of("3C"))  # east
+                .apply(Play.of("5C"))  # south
+                .apply(Play.of("6C"))  # west
+                .apply(Play.of("KC"))  # north
+        )
+        self.assertFalse(game.is_legal(Play.of("KC")))
