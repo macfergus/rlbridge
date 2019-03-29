@@ -8,6 +8,12 @@ class Hand:
     def __init__(self, cards):
         self.cards = frozenset(cards)
 
+    def has_suit(self, suit):
+        for card in self.cards:
+            if card.suit == suit:
+                return True
+        return False
+
     def __contains__(self, card):
         return card in self.cards
 

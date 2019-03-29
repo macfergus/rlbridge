@@ -27,7 +27,7 @@ EXAMPLE_DEAL = Deal.from_dict({
         "10S",
         "KH", "JH", "10H", "9H", "7H",
         "KD", "QD", "JD", "9D", "8D", "3D",
-        "5C",
+        "6C",
     ])
 })
 
@@ -50,3 +50,44 @@ class IsLegalTest(unittest.TestCase):
     def test_cannot_play_card_not_in_hand(self):
         game = start_play(declarer=Player.north)
         self.assertFalse(game.is_legal(Play.of("AC")))
+
+    def test_must_follow_suit_if_possible(self):
+        game = start_play(declarer=Player.north) \
+            .apply(Play.of("10D"))
+        self.assertTrue(game.is_legal(Play.of("7D")))
+        self.assertFalse(game.is_legal(Play.of("AC")))
+
+    def test_can_change_suit_if_void(self):
+        game = start_play(declarer=Player.north) \
+            .apply(Play.of("8H"))
+        self.assertTrue(game.is_legal(Play.of("AC")))
+
+    def test_winner_leads_next_trick(self):
+        game = (
+            start_play(declarer=Player.north)
+                .apply(Play.of("3C"))  # east
+                .apply(Play.of("5C"))  # south
+                .apply(Play.of("6C"))  # west
+                .apply(Play.of("KC"))  # north
+        )
+        self.assertEqual(Player.north, game.next_player)
+
+    def test_off_suit_cannot_win_trick(self):
+        game = (
+            start_play(declarer=Player.north)
+                .apply(Play.of("4H"))  # east
+                .apply(Play.of("AC"))  # south
+                .apply(Play.of("7H"))  # west
+                .apply(Play.of("2H"))  # north
+        )
+        self.assertEqual(Player.west, game.next_player)
+
+    def test_trump_wins_trick(self):
+        game = (
+            start_play(declarer=Player.north)
+                .apply(Play.of("4H"))  # east
+                .apply(Play.of("2S"))  # south
+                .apply(Play.of("7H"))  # west
+                .apply(Play.of("2H"))  # north
+        )
+        self.assertEqual(Player.south, game.next_player)
