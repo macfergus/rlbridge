@@ -1,6 +1,7 @@
 from .. import bots, cards
 from ..game import GameState
 from ..players import Player
+from ..scoring import score_hand
 from .command import Command
 
 
@@ -19,3 +20,5 @@ class DemoGame(Command):
             action = agent.select_action(hand.perspective(next_player))
             print('{}: {}'.format(next_player, action))
             hand = hand.apply(action)
+        result = score_hand(hand)
+        print(result)

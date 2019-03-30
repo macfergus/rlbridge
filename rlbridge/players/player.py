@@ -2,6 +2,7 @@ import enum
 
 __all__ = [
     'Player',
+    'Side',
 ]
 
 
@@ -45,3 +46,14 @@ class Player(enum.Enum):
         if self == Player.south:
             return 'S'
         return 'W'
+
+
+class Side(enum.Enum):
+    north_south = 1
+    east_west = 2
+
+
+    def __str__(self):
+        if self == Side.north_south:
+            return 'NS'
+        return 'EW'
