@@ -33,6 +33,16 @@ class Player(enum.Enum):
             return other in (Player.north, Player.south)
         return other in (Player.east, Player.west)
 
+    @property
+    def partner(self):
+        if self == Player.north:
+            return Player.south
+        if self == Player.south:
+            return Player.north
+        if self == Player.east:
+            return Player.west
+        return Player.east
+
     def is_opponent(self, other):
         if self in (Player.north, Player.south):
             return other in (Player.east, Player.west)

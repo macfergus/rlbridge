@@ -67,6 +67,16 @@ class GameState:
             return self.auction.next_player
         return self.playstate.next_player
 
+    @property
+    def next_decider(self):
+        if self.phase == Phase.auction:
+            return self.auction.next_player
+        auction_result = self.auction.result()
+        dummy = auction_result.declarer.partner
+        if self.playstate.next_player == dummy:
+            return auction_result.declarer
+        return self.playstate.next_player
+
     @classmethod
     def new_deal(cls, deal, dealer):
         return GameState(

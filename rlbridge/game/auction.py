@@ -9,6 +9,7 @@ __all__ = [
     'ALL_BIDS',
     'Call',
     'Auction',
+    'Scale',
 ]
 
 
@@ -59,6 +60,12 @@ class Denomination:
     def notrump(cls):
         return Denomination(is_notrump=True)
 
+    def is_minor(self):
+        return self.trump_suit in (Suit.clubs, Suit.diamonds)
+
+    def is_major(self):
+        return self.trump_suit in (Suit.hearts, Suit.spades)
+
     def __lt__(self, other):
         if self.is_notrump:
             return False
@@ -80,6 +87,13 @@ class Denomination:
         if self.trump_suit == Suit.spades:
             return '♠'
         return 'NT'
+
+    @classmethod
+    def of(self, denom_str):
+        """Helper for testing and such."""
+        if denom_str == 'NT':
+            return Denomination.notrump()
+        return Denomination.suit(Suit.of(denom_str))
 
 
 ALL_DENOMINATIONS = (

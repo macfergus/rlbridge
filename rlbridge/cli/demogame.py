@@ -16,9 +16,8 @@ class DemoGame(Command):
         hand = GameState.new_deal(cards.new_deal(), dealer=Player.north)
         while not hand.is_over():
             next_player = hand.next_player
-            agent = agents[next_player]
-            action = agent.select_action(hand.perspective(next_player))
-            print('{}: {}'.format(next_player, action))
+            next_decider = hand.next_decider
+            agent = agents[next_decider]
+            action = agent.select_action(hand.perspective(next_decider))
             hand = hand.apply(action)
         result = score_hand(hand)
-        print(result)
