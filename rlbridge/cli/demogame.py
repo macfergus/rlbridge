@@ -21,3 +21,4 @@ class DemoGame(Command):
             action = agent.select_action(hand.perspective(next_decider))
             hand = hand.apply(action)
         result = score_hand(hand)
+        print(result)

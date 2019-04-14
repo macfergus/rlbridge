@@ -48,6 +48,11 @@ class Player(enum.Enum):
             return other in (Player.east, Player.west)
         return other in (Player.north, Player.south)
 
+    def side(self):
+        if self in (Player.north, Player.south):
+            return Side.north_south
+        return Side.east_west
+
     def __str__(self):
         if self == Player.north:
             return 'N'
@@ -61,7 +66,6 @@ class Player(enum.Enum):
 class Side(enum.Enum):
     north_south = 1
     east_west = 2
-
 
     def __str__(self):
         if self == Side.north_south:

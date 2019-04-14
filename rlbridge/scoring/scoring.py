@@ -8,6 +8,11 @@ __all__ = [
 
 class Score:
     def __init__(self, declarer, defender):
+        # Only one side can score points on any deal.
+        assert (
+            (declarer >= 0 and defender == 0) or
+            (defender >= 0 and declarer == 0)
+        )
         self.declarer = declarer
         self.defender = defender
 
@@ -32,24 +37,14 @@ class DealResult:
         self.tricks_won = tricks_won
 
 
-def score_hand(state):
-    assert state.is_over()
-    tricks_won = {
-        Side.north_south: 0,
-        Side.east_west: 0,
-    }
-    for trick in state.playstate.completed_tricks:
-        if trick.winner() in (Player.north, Player.south):
-            tricks_won[Side.north_south] += 1
-        else:
-            tricks_won[Side.east_west] += 1
-    return tricks_won
+def made_contract(deal_result):
+    return deal_result.tricks_won >= deal_result.bid.tricks + 6
 
 
 def trick_points(deal_result):
-    odd_tricks = deal_result.tricks_won - 6
-    if odd_tricks <= 0:
+    if not made_contract(deal_result):
         return 0
+    odd_tricks = deal_result.tricks_won - 6
     bid_tricks = deal_result.bid.tricks
     overtricks = odd_tricks - bid_tricks
     doubled_ot_bonus = 200 if deal_result.vulnerable else 100
@@ -87,7 +82,7 @@ def is_contract_game(deal_result):
 
 
 def game_points(deal_result):
-    if deal_result.tricks_won < deal_result.bid.tricks + 6:
+    if not made_contract(deal_result):
         return 0
     if is_contract_game(deal_result):
         if deal_result.vulnerable:
@@ -97,7 +92,7 @@ def game_points(deal_result):
 
 
 def slam_points(deal_result):
-    if deal_result.tricks_won < deal_result.bid.tricks + 6:
+    if not made_contract(deal_result):
         return 0
     if deal_result.bid.tricks == 6:
         return 750 if deal_result.vulnerable else 500
@@ -107,9 +102,10 @@ def slam_points(deal_result):
 
 
 def undertrick_points(deal_result):
-    undertricks = deal_result.bid.tricks + 6 - deal_result.tricks_won
-    if undertricks < 1:
+    if made_contract(deal_result):
         return 0
+    undertricks = deal_result.bid.tricks + 6 - deal_result.tricks_won
+    assert undertricks >= 1
     if deal_result.scale == Scale.undoubled:
         if deal_result.vulnerable:
             return 100 * undertricks
@@ -139,7 +135,7 @@ def undertrick_points(deal_result):
 
 
 def doubled_contract_bonus(deal_result):
-    if deal_result.tricks_won < deal_result.bid.tricks + 6:
+    if not made_contract(deal_result):
         return 0
     if deal_result.scale == Scale.doubled:
         return 50
@@ -160,3 +156,27 @@ def calculate_score(deal_result):
             undertrick_points(deal_result)
         )
     )
+
+
+def get_deal_result(state):
+    assert state.is_over()
+    tricks_won = {
+        Side.north_south: 0,
+        Side.east_west: 0,
+    }
+    for trick in state.playstate.completed_tricks:
+        if trick.winner() in (Player.north, Player.south):
+            tricks_won[Side.north_south] += 1
+        else:
+            tricks_won[Side.east_west] += 1
+    auction_result = state.auction.result()
+    return DealResult(
+        bid=auction_result.bid,
+        scale=auction_result.scale,
+        vulnerable=False,
+        tricks_won=tricks_won[auction_result.declarer.side()]
+    )
+
+
+def score_hand(state):
+    return calculate_score(get_deal_result(state))
