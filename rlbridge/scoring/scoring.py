@@ -170,10 +170,14 @@ def get_deal_result(state):
         else:
             tricks_won[Side.east_west] += 1
     auction_result = state.auction.result()
+    if auction_result.declarer.side() == Side.north_south:
+        vulnerable = state.northsouth_vulnerable
+    else:
+        vulnerable = state.eastwest_vulnerable
     return DealResult(
         bid=auction_result.bid,
         scale=auction_result.scale,
-        vulnerable=False,
+        vulnerable=vulnerable,
         tricks_won=tricks_won[auction_result.declarer.side()]
     )
 

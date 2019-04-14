@@ -55,8 +55,11 @@ class Perspective:
 
 
 class GameState:
-    def __init__(self, deal, phase, auction, playstate):
+    def __init__(self, deal, northsouth_vulnerable, eastwest_vulnerable,
+                 phase, auction, playstate):
         self.deal = deal
+        self.northsouth_vulnerable = northsouth_vulnerable
+        self.eastwest_vulnerable = eastwest_vulnerable
         self.phase = phase
         self.auction = auction
         self.playstate = playstate
@@ -78,9 +81,12 @@ class GameState:
         return self.playstate.next_player
 
     @classmethod
-    def new_deal(cls, deal, dealer):
+    def new_deal(cls, deal, dealer,
+                 northsouth_vulnerable, eastwest_vulnerable):
         return GameState(
             deal=deal,
+            northsouth_vulnerable=northsouth_vulnerable,
+            eastwest_vulnerable=eastwest_vulnerable,
             phase=Phase.auction,
             auction=Auction.new_auction(dealer),
             playstate=None,
@@ -114,6 +120,8 @@ class GameState:
             playstate = PlayState.open_play(next_auction.result(), self.deal)
         return GameState(
             deal=self.deal,
+            northsouth_vulnerable=self.northsouth_vulnerable,
+            eastwest_vulnerable=self.eastwest_vulnerable,
             phase=next_phase,
             auction=next_auction,
             playstate=playstate
@@ -124,6 +132,8 @@ class GameState:
         next_playstate = self.playstate.apply(play)
         return GameState(
             deal=self.deal,
+            northsouth_vulnerable=self.northsouth_vulnerable,
+            eastwest_vulnerable=self.eastwest_vulnerable,
             phase=self.phase,
             auction=self.auction,
             playstate=next_playstate

@@ -1,3 +1,5 @@
+import random
+
 from .. import bots, cards
 from ..game import GameState
 from ..players import Player
@@ -13,7 +15,12 @@ class DemoGame(Command):
             Player.south: bots.randombot.RandomBot(),
             Player.west: bots.randombot.RandomBot(),
         }
-        hand = GameState.new_deal(cards.new_deal(), dealer=Player.north)
+        hand = GameState.new_deal(
+            cards.new_deal(),
+            dealer=Player.north,
+            northsouth_vulnerable=random.choice([True, False]),
+            eastwest_vulnerable=random.choice([True, False])
+        )
         while not hand.is_over():
             next_player = hand.next_player
             next_decider = hand.next_decider
