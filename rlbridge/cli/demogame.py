@@ -2,6 +2,7 @@ import random
 
 from .. import bots, cards
 from ..game import GameState
+from ..io import GamePrinter
 from ..players import Player
 from ..scoring import score_hand
 from .command import Command
@@ -21,11 +22,13 @@ class DemoGame(Command):
             northsouth_vulnerable=random.choice([True, False]),
             eastwest_vulnerable=random.choice([True, False])
         )
+        p = GamePrinter()
         while not hand.is_over():
             next_player = hand.next_player
             next_decider = hand.next_decider
             agent = agents[next_decider]
             action = agent.select_action(hand.perspective(next_decider))
             hand = hand.apply(action)
+        p.show_game(hand)
         result = score_hand(hand)
         print(result)
