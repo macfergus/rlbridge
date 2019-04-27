@@ -1,8 +1,8 @@
 import numpy as np
 
+from ...game import Action, Phase
 from .encoder import Encoder
 from .model import construct_model
-from ...game import Action, Phase
 
 __all__ = [
     'LSTMBot',

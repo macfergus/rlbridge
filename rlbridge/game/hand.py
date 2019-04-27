@@ -1,8 +1,8 @@
 import enum
 
+from ..players import *
 from .auction import *
 from .play import *
-from ..players import *
 
 __all__ = [
     'Action',

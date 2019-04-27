@@ -1,2 +1,1 @@
-from . import lstm
-from . import randombot
+from . import lstm, randombot

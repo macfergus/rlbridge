@@ -1,6 +1,7 @@
 import numpy as np
 from keras import Model
-from keras.layers import Concatenate, Dense, Flatten, LSTM, Input, Reshape, TimeDistributed
+from keras.layers import (LSTM, Concatenate, Dense, Flatten, Input, Reshape,
+                          TimeDistributed)
 
 
 def construct_model(input_shape, lstm_size=512, lstm_depth=2):

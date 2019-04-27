@@ -1,7 +1,7 @@
 import numpy as np
 
-from ...game import Bid, Call, Denomination, Play
 from ...cards import Card, Suit
+from ...game import Bid, Call, Denomination, Play
 
 
 def reverse_states(final_state):
