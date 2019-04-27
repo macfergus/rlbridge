@@ -101,3 +101,20 @@ class IsLegalTest(unittest.TestCase):
                 .apply(Play.of("KC"))  # north
         )
         self.assertFalse(game.is_legal(Play.of("KC")))
+
+
+class VisibleCardsTest(unittest.TestCase):
+    def test_dummy_not_visible_before_open(self):
+        game = start_play(declarer=Player.north)
+        visible_cards = game.visible_cards(Player.east)
+        # Before the first play, you can't see the dummy's holding.
+        self.assertCountEqual([Player.east], visible_cards.keys())
+
+    def test_dummy_visible_after_open(self):
+        game = (
+            start_play(declarer=Player.north)
+                .apply(Play.of("3C"))
+        )
+        visible_cards = game.visible_cards(Player.east)
+        self.assertCountEqual(
+            [Player.east, Player.south], visible_cards.keys())

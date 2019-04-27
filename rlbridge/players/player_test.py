@@ -19,3 +19,15 @@ class PlayerTest(unittest.TestCase):
         self.assertEqual(Player.south, Player.east.rotate())
         self.assertEqual(Player.west, Player.south.rotate())
         self.assertEqual(Player.north, Player.west.rotate())
+
+    def test_lho(self):
+        self.assertEqual(Player.east, Player.north.lho())
+        self.assertEqual(Player.south, Player.east.lho())
+        self.assertEqual(Player.west, Player.south.lho())
+        self.assertEqual(Player.north, Player.west.lho())
+
+    def test_partner(self):
+        self.assertEqual(Player.south, Player.north.partner)
+        self.assertEqual(Player.west, Player.east.partner)
+        self.assertEqual(Player.north, Player.south.partner)
+        self.assertEqual(Player.east, Player.west.partner)

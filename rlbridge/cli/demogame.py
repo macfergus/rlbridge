@@ -11,9 +11,9 @@ from .command import Command
 class DemoGame(Command):
     def run(self, args):
         agents = {
-            Player.north: bots.randombot.RandomBot(),
+            Player.north: bots.lstm.LSTMBot(),
             Player.east: bots.randombot.RandomBot(),
-            Player.south: bots.randombot.RandomBot(),
+            Player.south: bots.lstm.LSTMBot(),
             Player.west: bots.randombot.RandomBot(),
         }
         hand = GameState.new_deal(
@@ -27,7 +27,7 @@ class DemoGame(Command):
             next_player = hand.next_player
             next_decider = hand.next_decider
             agent = agents[next_decider]
-            action = agent.select_action(hand.perspective(next_decider))
+            action = agent.select_action(hand)
             hand = hand.apply(action)
         p.show_game(hand)
         result = score_hand(hand)

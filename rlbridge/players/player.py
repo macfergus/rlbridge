@@ -22,6 +22,18 @@ class Player(enum.Enum):
             return Player.west
         return Player.north
 
+    def lho(self):
+        """Return the left-hand opponent.
+
+        This is the player who plays after this player."""
+        return self.rotate()
+
+    def rho(self):
+        """Return the right-hand opponent.
+
+        This is the player who plays before this player."""
+        return self.rotate().rotate().rotate()
+
     def is_teammate(self, other):
         """Check if the player is on the same team as another player.
 
@@ -71,3 +83,8 @@ class Side(enum.Enum):
         if self == Side.north_south:
             return 'NS'
         return 'EW'
+
+    def opposite(self):
+        if self == Side.north_south:
+            return Side.east_west
+        return Side.north_south

@@ -2,6 +2,7 @@ import enum
 
 from .auction import *
 from .play import *
+from ..players import *
 
 __all__ = [
     'Action',
@@ -39,12 +40,33 @@ class Action:
         assert False
 
 
-class Perspective:
-    def __init__(self, phase, auction, playstate, player):
+class GameState:
+    def __init__(self, deal, northsouth_vulnerable, eastwest_vulnerable,
+                 phase, auction, playstate,
+                 num_states,
+                 prev_state, prev_action):
+        self.deal = deal
+        self.northsouth_vulnerable = northsouth_vulnerable
+        self.eastwest_vulnerable = eastwest_vulnerable
         self.phase = phase
         self.auction = auction
         self.playstate = playstate
-        self.player = player
+        self.num_states = num_states
+        self.prev_state = prev_state
+        self.prev_action = prev_action
+
+    def visible_cards(self, player):
+        if self.phase == Phase.auction:
+            # During the auction, you can see only your own cards. Also
+            # your holding stays steady.
+            return {player: self.deal.hands()[player]}
+        return self.playstate.visible_cards(player)
+
+    @property
+    def next_player(self):
+        if self.phase == Phase.auction:
+            return self.auction.next_player
+        return self.playstate.next_player
 
     def legal_actions(self):
         if self.phase == Phase.auction:
@@ -52,23 +74,6 @@ class Perspective:
                     for call in self.auction.legal_calls()]
         return [Action.make_play(play)
                 for play in self.playstate.legal_plays()]
-
-
-class GameState:
-    def __init__(self, deal, northsouth_vulnerable, eastwest_vulnerable,
-                 phase, auction, playstate):
-        self.deal = deal
-        self.northsouth_vulnerable = northsouth_vulnerable
-        self.eastwest_vulnerable = eastwest_vulnerable
-        self.phase = phase
-        self.auction = auction
-        self.playstate = playstate
-
-    @property
-    def next_player(self):
-        if self.phase == Phase.auction:
-            return self.auction.next_player
-        return self.playstate.next_player
 
     @property
     def next_decider(self):
@@ -90,18 +95,20 @@ class GameState:
             phase=Phase.auction,
             auction=Auction.new_auction(dealer),
             playstate=None,
+            num_states=1,
+            prev_state=None,
+            prev_action=None,
         )
 
     def is_over(self):
         return self.phase == Phase.play and self.playstate.is_over()
 
-    def perspective(self, player):
-        return Perspective(
-            phase=self.phase,
-            auction=self.auction,
-            playstate=self.playstate,
-            player=player,
-        )
+    def is_vulnerable(self, side):
+        if side == Side.north_south:
+            return self.northsouth_vulnerable
+        if side == Side.east_west:
+            return self.eastwest_vulnerable
+        raise ValueError(side)
 
     def apply(self, action):
         if self.phase == Phase.auction:
@@ -124,7 +131,10 @@ class GameState:
             eastwest_vulnerable=self.eastwest_vulnerable,
             phase=next_phase,
             auction=next_auction,
-            playstate=playstate
+            playstate=playstate,
+            num_states=self.num_states + 1,
+            prev_state=self,
+            prev_action=Action.make_call(call),
         )
 
     def apply_play(self, play):
@@ -136,5 +146,8 @@ class GameState:
             eastwest_vulnerable=self.eastwest_vulnerable,
             phase=self.phase,
             auction=self.auction,
-            playstate=next_playstate
+            playstate=next_playstate,
+            num_states=self.num_states + 1,
+            prev_state=self,
+            prev_action=Action.make_play(play),
         )

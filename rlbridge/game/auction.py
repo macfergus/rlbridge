@@ -77,6 +77,9 @@ class Denomination:
         return self.trump_suit == other.trump_suit and \
             self.is_notrump == other.is_notrump
 
+    def __hash__(self):
+        return hash((self.trump_suit, self.is_notrump))
+
     def __str__(self):
         if self.trump_suit == Suit.clubs:
             return '♣'

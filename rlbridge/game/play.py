@@ -1,3 +1,5 @@
+from collections import namedtuple
+
 from ..cards import Card
 
 __all__ = [
@@ -14,6 +16,9 @@ def beats(candidate_card, ref_card, trump_suit):
     if candidate_card.suit == trump_suit:
         return True
     return False
+
+
+PlayerCard = namedtuple('PlayerCard', 'player card')
 
 
 class Trick:
@@ -58,6 +63,27 @@ class Trick:
             winning_player = winning_player.rotate()
         return winning_player
 
+    def opener(self):
+        num_cards_played = len(self.cards)
+        if num_cards_played == 3:
+            return self.next_player.rotate()
+        if num_cards_played == 2:
+            return self.next_player.rotate().rotate()
+        if num_cards_played == 1:
+            return self.next_player.rotate().rotate().rotate()
+        return self.next_player
+
+    def leader(self):
+        leader = None
+        lead_player = None
+        player = self.opener()
+        for card in self.cards:
+            if beats(card, leader, self.trump_suit):
+                leader = card
+                lead_player = player
+            player = player.rotate()
+        return PlayerCard(player, card)
+
 
 class Play:
     def __init__(self, card):
@@ -73,13 +99,26 @@ class Play:
 
 
 class PlayState:
-    def __init__(self, trump_suit, next_player, hands,
+    def __init__(self, trump_suit, dummy, next_player, hands,
                  completed_tricks, current_trick):
         self.trump_suit = trump_suit
+        self.dummy = dummy
         self.next_player = next_player
         self.hands = hands
         self.completed_tricks = list(completed_tricks)
         self.current_trick = current_trick
+
+    def visible_cards(self, player):
+        visible = {player: self.hands[player]}
+        if self.dummy_is_visible():
+            visible[self.dummy] = self.hands[self.dummy]
+        return visible
+
+    def dummy_is_visible(self):
+        return (
+            len(self.completed_tricks) > 0 or
+            self.current_trick.has_lead()
+        )
 
     def is_legal(self, play):
         if play.card not in self.hands[self.next_player]:
@@ -113,6 +152,7 @@ class PlayState:
             next_trick = Trick.begin(next_player, self.trump_suit)
         return PlayState(
             trump_suit=self.trump_suit,
+            dummy=self.dummy,
             next_player=next_player,
             hands=next_hands,
             completed_tricks=completed_tricks,
@@ -121,8 +161,10 @@ class PlayState:
     @classmethod
     def open_play(cls, auction_result, deal):
         next_player = auction_result.declarer.rotate()
+        dummy = auction_result.declarer.partner
         return cls(
             trump_suit=auction_result.trump,
+            dummy=dummy,
             next_player=next_player,
             hands=deal.hands(),
             completed_tricks=[],
