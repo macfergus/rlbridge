@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from . import demogame
+from . import initbot
 
 
 def cli():
@@ -10,13 +11,14 @@ def cli():
 
     commands = [
         demogame.DemoGame(),
+        initbot.InitBot(),
     ]
     command_map = {}
     for command in commands:
         subparser = subparsers.add_parser(
             command.name(),
             help=command.description())
-        command.register_arguments(parser)
+        command.register_arguments(subparser)
         command_map[command.name()] = command
 
     args = parser.parse_args()

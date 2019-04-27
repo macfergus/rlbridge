@@ -1,6 +1,7 @@
 import random
 
-from .. import bots, cards
+from .. import cards
+from ..bots import load_bot
 from ..game import GameState
 from ..io import GamePrinter
 from ..players import Player
@@ -9,13 +10,20 @@ from .command import Command
 
 
 class DemoGame(Command):
+    def register_arguments(self, parser):
+        parser.add_argument('northsouth_bot')
+        parser.add_argument('eastwest_bot')
+
     def run(self, args):
+        northsouth_bot = load_bot(args.northsouth_bot)
+        eastwest_bot = load_bot(args.eastwest_bot)
         agents = {
-            Player.north: bots.lstm.LSTMBot(),
-            Player.east: bots.randombot.RandomBot(),
-            Player.south: bots.lstm.LSTMBot(),
-            Player.west: bots.randombot.RandomBot(),
+            Player.north: northsouth_bot,
+            Player.east: eastwest_bot,
+            Player.south: northsouth_bot,
+            Player.west: eastwest_bot,
         }
+        print('{} vs {}'.format(northsouth_bot.name(), eastwest_bot.name()))
         hand = GameState.new_deal(
             cards.new_deal(),
             dealer=Player.north,

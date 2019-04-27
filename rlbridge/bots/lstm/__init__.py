@@ -1,1 +1,1 @@
-from .bot import *
+from .loaders import *

@@ -1,8 +1,8 @@
 import numpy as np
 
 from ...game import Action, Phase
+from ..base import Bot
 from .encoder import Encoder
-from .model import construct_model
 
 __all__ = [
     'LSTMBot',
@@ -19,10 +19,11 @@ def sample(p, temperature):
     return np.random.choice(n, size=n, replace=False, p=p)
 
 
-class LSTMBot:
-    def __init__(self):
+class LSTMBot(Bot):
+    def __init__(self, model, metadata):
+        super().__init__(metadata)
         self.encoder = Encoder()
-        self.model = construct_model(self.encoder.input_shape())
+        self.model = model
         self.temperature = 1.0
 
     def select_action(self, state):
