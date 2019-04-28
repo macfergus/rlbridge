@@ -1,5 +1,5 @@
-import tempfile
 import os
+import tempfile
 
 import h5py
 import keras

@@ -1,6 +1,7 @@
-from .command import Command
 from .. import bots
 from ..io import parse_options
+from .command import Command
+
 
 class InitBot(Command):
     def register_arguments(self, parser):

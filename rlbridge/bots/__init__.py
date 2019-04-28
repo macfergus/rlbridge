@@ -1,2 +1,2 @@
-from .loaders import *
 from . import lstm, randombot
+from .loaders import *

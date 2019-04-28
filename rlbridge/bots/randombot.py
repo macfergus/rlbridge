@@ -1,7 +1,7 @@
 import random
 
-from .base import Bot
 from ..game import Action, Phase
+from .base import Bot
 
 __all__ = [
     'init',

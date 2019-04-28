@@ -1,9 +1,7 @@
 import argparse
 import sys
 
-from . import demogame
-from . import evaluate
-from . import initbot
+from . import demogame, evaluate, initbot
 
 
 def cli():
