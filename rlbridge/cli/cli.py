@@ -2,6 +2,7 @@ import argparse
 import sys
 
 from . import demogame
+from . import evaluate
 from . import initbot
 
 
@@ -11,6 +12,7 @@ def cli():
 
     commands = [
         demogame.DemoGame(),
+        evaluate.Evaluate(),
         initbot.InitBot(),
     ]
     command_map = {}
