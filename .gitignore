@@ -1,6 +1,6 @@
 __pycache__
 .python-version
 *.swp
-bots/
+/bots/
 tmp/
 data/
