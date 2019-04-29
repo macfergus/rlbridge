@@ -1,4 +1,5 @@
 import h5py
+import numpy as np
 
 __all__ = [
     'Episode',
