@@ -28,6 +28,10 @@ class Encoder:
         DIM_PLAY
     )
 
+    # These include a "not my turn" sentinel
+    DIM_CALL_ACTION = 39
+    DIM_PLAY_ACTION = 53
+
     VISIBLE_CARD_START = DIM_NEW_GAME
     VULNERABILITY_START = VISIBLE_CARD_START + DIM_VISIBLE_CARDS
     AUCTION_START = VULNERABILITY_START + DIM_VULNERABILITY
@@ -76,7 +80,7 @@ class Encoder:
             Denomination.spades(): 3,
             Denomination.notrump(): 4,
         }
-        return 5 * call.bid.tricks + denoms[call.bid.denomination]
+        return 5 * (call.bid.tricks - 1) + denoms[call.bid.denomination]
 
     def decode_call_index(self, index):
         if index == 35:
@@ -95,6 +99,22 @@ class Encoder:
             Denomination.notrump(),
         ]
         return Call.bid(Bid(denoms[denom_index], tricks_index + 1))
+
+    def encode_call_action(self, call):
+        action = np.zeros(self.DIM_CALL_ACTION)
+        if call is None:
+            action[0] = 1
+        else:
+            action[self.encode_call(call) + 1] = 1
+        return action
+
+    def encode_play_action(self, play):
+        action = np.zeros(self.DIM_PLAY_ACTION)
+        if play is None:
+            action[0] = 1
+        else:
+            action[self.encode_card(play.card) + 1] = 1
+        return action
 
     def encode_game_state(self, state, perspective):
         s = np.zeros(self.DIM)

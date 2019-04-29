@@ -1,4 +1,5 @@
 import random
+from collections import namedtuple
 
 from .. import cards
 from ..game import GameState
@@ -6,8 +7,12 @@ from ..players import Player
 from ..scoring import score_hand
 
 __all__ = [
+    'GameRecord',
     'simulate_game',
 ]
+
+
+GameRecord = namedtuple('GameRecord', 'game points_ns points_ew')
 
 
 def simulate_game(ns_bot, ew_bot):
@@ -32,5 +37,13 @@ def simulate_game(ns_bot, ew_bot):
     result = score_hand(hand)
     declarer = hand.auction.result().declarer
     if declarer in (Player.north, Player.south):
-        return result.declarer, result.defender
-    return result.defender, result.declarer
+        points_ns = result.declarer
+        points_ew = result.defender
+    else:
+        points_ns = result.defender
+        points_ew = result.declarer
+    return GameRecord(
+        game=hand,
+        points_ns=points_ns,
+        points_ew=points_ew
+    )
