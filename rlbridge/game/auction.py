@@ -238,6 +238,9 @@ class Auction:
             self.calls[-2] == pass_call and \
             self.calls[-3] == pass_call
 
+    def has_contract(self):
+        return self.is_over() and self.last_bid is not None
+
     def result(self):
         """Return the result of the auction.
 

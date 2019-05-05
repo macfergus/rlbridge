@@ -26,6 +26,15 @@ class AuctionResultTest(unittest.TestCase):
         contract = auction.result()
         self.assertIsNone(contract)
 
+    def test_fourth_seat_can_open(self):
+        auction = (
+            Auction.new_auction(Player.north)
+            .apply(Call.pass_turn())
+            .apply(Call.pass_turn())
+            .apply(Call.pass_turn())
+        )
+        self.assertFalse(auction.is_over())
+
     def test_bid(self):
         auction = Auction.new_auction(Player.north)
         auction = auction.apply(Call.of('1S'))

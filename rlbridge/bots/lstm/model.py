@@ -3,14 +3,20 @@ from keras import Model
 from keras.layers import (LSTM, Concatenate, Dense, Flatten, Input, Reshape,
                           TimeDistributed)
 
+# The longest possible auction has 319 calls. But that is very
+# unrealistic. Here we impose an arbitrary cap of 60 calls.
+MAX_GAME = 1 + 60 + 52
+
 
 def construct_model(input_shape, lstm_size=512, lstm_depth=2):
-    game_input = Input(shape=input_shape)
+    game_input = Input(batch_shape=(1,1) + input_shape)
 
-    shaped_input = Reshape((1, -1))(game_input)
-    lstm_y = shaped_input
-    for _ in range(lstm_depth):
-        lstm_y = LSTM(lstm_size, return_sequences=True)(lstm_y)
+    lstm_y = game_input
+    for i in range(lstm_depth):
+        # The inner layers should return sequences; the last layer does
+        # not need to.
+        seq = i != lstm_depth - 1
+        lstm_y = LSTM(lstm_size, return_sequences=seq, stateful=True)(lstm_y)
 
     # Call output (39,)
     # same encoding as auction input
@@ -19,12 +25,12 @@ def construct_model(input_shape, lstm_size=512, lstm_depth=2):
     # 36 -> double
     # 37 -> redouble
     # 38 -> pass
-    call_output = TimeDistributed(Dense(39, activation='softmax'))(lstm_y)
+    call_output = Dense(39, activation='softmax')(lstm_y)
 
     # Play output (53,)
     # 0 -> not my turn
     # 1..52 -> 2C .. AS
-    play_output = TimeDistributed(Dense(53, activation='softmax'))(lstm_y)
+    play_output = Dense(53, activation='softmax')(lstm_y)
 
     model = Model(
         inputs=[

@@ -109,6 +109,9 @@ class GamePrinter:
     def show_game(self, state):
         self.show_deal(state.deal)
         self.show_auction(state.auction)
+        if not state.auction.has_contract():
+            # No one bid, so there's no play to show.
+            return
         auction_result = state.auction.result()
         self.outf.write('\n')
         self.outf.write('Contract: {} {}\n'.format(

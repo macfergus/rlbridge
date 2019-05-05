@@ -30,6 +30,10 @@ def deal_result_vulnerable(contract, tricks):
 
 
 class CalculateScoreNotVulnerableTest(unittest.TestCase):
+    def test_no_contract(self):
+        score = calculate_score(DealResult(None, None, None, 0))
+        self.assertEqual(Score(0, 0), score)
+
     def test_make_minor(self):
         score = calculate_score(deal_result('1C', tricks=7))
         self.assertEqual(Score(70, 0), score)

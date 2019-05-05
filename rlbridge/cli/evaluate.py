@@ -38,18 +38,20 @@ class Evaluate(Command):
             else:
                 ns_bot = bot2
                 ew_bot = bot1
-            points_ns, points_ew = simulate_game(ns_bot, ew_bot)
+            result = simulate_game(ns_bot, ew_bot)
             if ns_bot is bot1:
-                margins.append(points_ns - points_ew)
+                margins.append(result.points_ns - result.points_ew)
             else:
-                margins.append(points_ew - points_ns)
+                margins.append(result.points_ew - result.points_ns)
         margins = np.array(margins)
         mean_margin = np.mean(margins)
         lower, upper = estimate_ci(margins, 0.05, 0.95, n_bootstrap=1000)
         if mean_margin > 0:
+            print('Winner is ', args.bot1)
             winner = bot1
             loser = bot2
         else:
+            print('Winner is ', args.bot2)
             winner = bot2
             loser = bot1
             mean_margin = -1 * mean_margin

@@ -145,6 +145,9 @@ def doubled_contract_bonus(deal_result):
 
 
 def calculate_score(deal_result):
+    if deal_result.bid is None:
+        # No contract was reached, so no points for anyone.
+        return Score(declarer=0, defender=0)
     return Score(
         declarer=(
             trick_points(deal_result) +
@@ -160,6 +163,14 @@ def calculate_score(deal_result):
 
 def get_deal_result(state):
     assert state.is_over()
+    if not state.auction.has_contract():
+        # No one bid, so no play occurred.
+        return DealResult(
+            bid=None,
+            scale=None,
+            vulnerable=None,
+            tricks_won=0
+        )
     tricks_won = {
         Side.north_south: 0,
         Side.east_west: 0,

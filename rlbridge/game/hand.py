@@ -101,7 +101,9 @@ class GameState:
         )
 
     def is_over(self):
-        return self.phase == Phase.play and self.playstate.is_over()
+        return self.phase == Phase.play and (
+            (not self.auction.has_contract()) or self.playstate.is_over()
+        )
 
     def is_vulnerable(self, side):
         if side == Side.north_south:
@@ -124,7 +126,9 @@ class GameState:
         playstate = None
         if next_auction.is_over():
             next_phase = Phase.play
-            playstate = PlayState.open_play(next_auction.result(), self.deal)
+            if next_auction.has_contract():
+                playstate = PlayState.open_play(
+                    next_auction.result(), self.deal)
         return GameState(
             deal=self.deal,
             northsouth_vulnerable=self.northsouth_vulnerable,
