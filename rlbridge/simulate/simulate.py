@@ -35,6 +35,12 @@ def simulate_game(ns_bot, ew_bot):
         action = agent.select_action(hand)
         hand = hand.apply(action)
     result = score_hand(hand)
+    if not hand.auction.has_contract():
+        return GameRecord(
+            game=hand,
+            points_ns=0,
+            points_ew=0
+        )
     declarer = hand.auction.result().declarer
     if declarer in (Player.north, Player.south):
         points_ns = result.declarer

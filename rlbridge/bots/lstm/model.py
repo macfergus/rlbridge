@@ -2,6 +2,7 @@ import numpy as np
 from keras import Model
 from keras.layers import (LSTM, Concatenate, Dense, Flatten, Input, Reshape,
                           TimeDistributed)
+from keras.optimizers import Adam
 
 # The longest possible auction has 319 calls. But that is very
 # unrealistic. Here we impose an arbitrary cap of 60 calls.
@@ -41,5 +42,8 @@ def construct_model(input_shape, lstm_size=512, lstm_depth=2):
             play_output,
         ]
     )
-    model.compile(optimizer='adam', loss='categorical_crossentropy')
+    model.compile(
+        optimizer=Adam(clipnorm=0.5),
+        loss='categorical_crossentropy'
+    )
     return model

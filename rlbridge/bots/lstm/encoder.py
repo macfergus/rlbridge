@@ -8,7 +8,8 @@ def reverse_states(final_state):
     states = []
     state = final_state
     while state is not None:
-        states.append(state)
+        if not state.is_over():
+            states.append(state)
         state = state.prev_state
     states.reverse()
     return states

@@ -103,6 +103,11 @@ class LSTMBot(Bot):
             reward = game_result.points_ns - game_result.points_ew
         else:
             reward = game_result.points_ew - game_result.points_ns
+        if reward == 0:
+            # This can only happen if there is no contract. Impose a
+            # small penalty to get out of the equilibrium where no one
+            # tries to bid.
+            reward = -500
         reward /= 100
 
         game = game_result.game
