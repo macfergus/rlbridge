@@ -61,7 +61,6 @@ def show_log(log_q):
 
 class SelfPlay(Command):
     def register_arguments(self, parser):
-        parser.add_argument('--num-games', type=int, default=2)
         parser.add_argument('bot')
         parser.add_argument('checkpoint_out')
 

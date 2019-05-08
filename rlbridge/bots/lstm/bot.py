@@ -70,7 +70,12 @@ class LSTMBot(Bot):
         # state should match some point in this game record. In that
         # case, we can just feed the remainder and save some computation.
         suffix = self._match_prefix(game_record)
+        n_orig = game_record.shape[0]
         n_new = suffix.shape[0]
+        if n_new == n_orig:
+            # This is not a continuation of the previous game, so we
+            # should reset the inner state.
+            self.reset()
         for i in range(n_new):
             tmp = suffix[i].reshape((1, 1) + suffix[i].shape)
             calls, plays = self.model.predict(tmp)
@@ -108,7 +113,7 @@ class LSTMBot(Bot):
             # small penalty to get out of the equilibrium where no one
             # tries to bid.
             reward = -500
-        reward /= 100
+        reward /= 200
 
         game = game_result.game
         states = self.encoder.encode_full_game(game, perspective)

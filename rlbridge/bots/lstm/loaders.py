@@ -1,4 +1,5 @@
 from ... import kerasutil
+from ...rl import policy_loss
 from . import bot, encoder, model
 
 
@@ -19,5 +20,8 @@ def save(bot, h5group):
 
 def load(h5group, metadata):
     model_group = h5group['model']
-    m = kerasutil.load_model_from_hdf5_group(model_group)
+    m = kerasutil.load_model_from_hdf5_group(
+        model_group,
+        custom_objects={'policy_loss': policy_loss}
+    )
     return bot.LSTMBot(m, metadata)

@@ -1,3 +1,4 @@
+import copy
 import os
 import queue
 import random
@@ -32,7 +33,7 @@ class TrainEvalLoop:
         self.out_fname = out_fname
         self.logger = logger
         self.episode_buffer = []
-        self.eval_games = 200
+        self.eval_games = 100
         self.should_continue = True
         self.total_games = 0
 
@@ -41,10 +42,10 @@ class TrainEvalLoop:
     def run(self):
         while self.should_continue:
             self.ensure_episodes()
-            if not self.episode_buffer:
+            if len(self.episode_buffer) < 10:
                 continue
 
-            work = self.episode_buffer
+            work = self.episode_buffer[-1000:]
             self.episode_buffer = []
             random.shuffle(work)
             self.logger.log('Training on {} episodes'.format(len(work)))
@@ -52,14 +53,14 @@ class TrainEvalLoop:
                 self.training_bot.train_episode(ep)
                 self.total_games += 1
                 self.receive()
+            work = []
 
+            self.logger.log('Evaluating...')
             if self.evaluate_bot():
                 self.promote()
         self.logger.log('Bye!!')
 
     def ensure_episodes(self):
-        if self.episode_buffer:
-            return
         ep = self.episode_q.get()
         if ep is None:
             should_continue = False
@@ -112,6 +113,9 @@ class TrainEvalLoop:
         return lower > 0
 
     def promote(self):
+        # Any received games at this point came from an old worker.
+        self.episode_buffer = []
+
         out_fname = '{}_{:06d}'.format(self.out_fname, self.total_games)
         self.logger.log('Saving as {} and promoting'.format(out_fname))
         bots.save_bot(self.training_bot, out_fname)
