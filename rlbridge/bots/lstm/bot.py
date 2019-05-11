@@ -46,44 +46,19 @@ class LSTMBot(Bot):
         self.model = model
         self.temperature = 1.0
 
-        self._prefix = None
-
-    def reset(self):
-        self.model.reset_states()
-        self._prefix = None
-
-    def _match_prefix(self, array):
-        if self._prefix is None:
-            return array
-        n_prefix = self._prefix.shape[0]
-        n_array = array.shape[0]
-        if n_prefix >= n_array:
-            # If the stored state is longer, it can't be a prefix.
-            return array
-        if np.array_equal(self._prefix, array[:n_prefix]):
-            return array[n_prefix:]
-        return array
-
     def select_action(self, state):
         game_record = self.encoder.encode_full_game(state, state.next_player)
-        # If this agent has been playing the game, the model's internal
-        # state should match some point in this game record. In that
-        # case, we can just feed the remainder and save some computation.
-        suffix = self._match_prefix(game_record)
-        n_orig = game_record.shape[0]
-        n_new = suffix.shape[0]
-        if n_new == n_orig:
-            # This is not a continuation of the previous game, so we
-            # should reset the inner state.
-            self.reset()
-        for i in range(n_new):
-            tmp = suffix[i].reshape((1, 1) + suffix[i].shape)
-            calls, plays = self.model.predict(tmp)
-        self._prefix = game_record
+        n = game_record.shape[0]
+        states = np.zeros((1, MAX_GAME, self.encoder.DIM))
+        states[0, MAX_GAME - n:] = game_record
+        print(states)
+        calls, plays = self.model.predict(states)
         chosen_call = None
         chosen_play = None
         if state.phase == Phase.auction:
             call_p = calls.reshape((-1,))[1:]
+            print('Call')
+            print(state.next_player, call_p, np.sum(call_p))
             for call_index in sample(call_p, self.temperature):
                 call = self.encoder.decode_call_index(call_index)
                 if state.auction.is_legal(call):
@@ -92,6 +67,8 @@ class LSTMBot(Bot):
         else:
             # play
             play_p = plays.reshape((-1,))[1:]
+            print('Play')
+            print(state.next_player, play_p, np.sum(play_p))
             for play_index in sample(play_p, self.temperature):
                 play = self.encoder.decode_play_index(play_index)
                 if state.playstate.is_legal(play):
@@ -149,6 +126,34 @@ class LSTMBot(Bot):
             plays_made=plays_made,
             reward=reward
         )
+
+    def encode_pretraining(self, game_record, perspective):
+        game = game_record.game
+        full_state = self.encoder.encode_full_game(game, perspective)
+        n = game.num_states
+        states = np.zeros((n, MAX_GAME, self.encoder.DIM))
+        calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
+        plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
+        for i, (state, _) in enumerate(replay_game(game)):
+            seq_len = i + 2
+            states[i, MAX_GAME - seq_len:] = full_state[:seq_len]
+            if state.next_decider == perspective:
+                if state.phase == Phase.auction:
+                    calls[i] = self.encoder.encode_legal_calls(state)
+                    calls[i] /= np.sum(calls[i])
+                    plays[i] = self.encoder.encode_play_action(None)
+                else:
+                    plays[i] = self.encoder.encode_legal_plays(state)
+                    plays[i] /= np.sum(plays[i])
+                    calls[i] = self.encoder.encode_call_action(None)
+            else:
+                # This turn belongs to a different player.
+                calls[i] = self.encoder.encode_call_action(None)
+                plays[i] = self.encoder.encode_play_action(None)
+        return states, calls, plays
+
+    def pretrain(self, x_state, y_call, y_play):
+        self.model.fit(x_state, [y_call, y_play])
 
     def train_episode(self, episode):
         n_states = episode['states'].shape[0]

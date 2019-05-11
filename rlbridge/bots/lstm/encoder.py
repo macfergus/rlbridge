@@ -101,6 +101,20 @@ class Encoder:
         ]
         return Call.bid(Bid(denoms[denom_index], tricks_index + 1))
 
+    def encode_legal_calls(self, state):
+        calls = np.zeros(self.DIM_CALL_ACTION)
+        for action in state.legal_actions():
+            if action.is_call:
+                calls[self.encode_call(action.call) + 1] = 1
+        return calls
+
+    def encode_legal_plays(self, state):
+        plays = np.zeros(self.DIM_PLAY_ACTION)
+        for action in state.legal_actions():
+            if action.is_play:
+                plays[self.encode_card(action.play.card) + 1] = 1
+        return plays
+
     def encode_call_action(self, call):
         action = np.zeros(self.DIM_CALL_ACTION)
         if call is None:

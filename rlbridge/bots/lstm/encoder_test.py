@@ -1,9 +1,9 @@
 import unittest
 
-from . import encoder
 from ...cards import new_deal
 from ...game import Call, GameState
 from ...players import Player
+from . import encoder
 
 
 class EncoderTest(unittest.TestCase):

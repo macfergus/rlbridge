@@ -5,21 +5,16 @@ from keras.layers import (LSTM, Concatenate, Dense, Flatten, Input, Reshape,
 from keras.optimizers import Adam
 
 from ...rl import policy_loss
-
-# The longest possible auction has 319 calls. But that is very
-# unrealistic. Here we impose an arbitrary cap of 60 calls.
-MAX_GAME = 1 + 60 + 52
+from .limits import MAX_GAME
 
 
 def construct_model(input_shape, lstm_size=512, lstm_depth=2):
-    game_input = Input(batch_shape=(1,1) + input_shape)
+    game_input = Input((MAX_GAME,) + input_shape)
 
     lstm_y = game_input
     for i in range(lstm_depth):
-        # The inner layers should return sequences; the last layer does
-        # not need to.
         seq = i != lstm_depth - 1
-        lstm_y = LSTM(lstm_size, return_sequences=seq, stateful=True)(lstm_y)
+        lstm_y = LSTM(lstm_size, return_sequences=seq)(lstm_y)
 
     # Call output (39,)
     # same encoding as auction input
