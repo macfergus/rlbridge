@@ -47,7 +47,7 @@ class Trick:
         return len(self.cards) == 4
 
     @classmethod
-    def begin(self, opener, trump_suit):
+    def begin(cls, opener, trump_suit):
         return Trick(next_player=opener, cards=[], trump_suit=trump_suit)
 
     def winner(self):

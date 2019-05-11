@@ -8,3 +8,7 @@ fix-imports:
 .PHONY: test
 test:
 	$(PYTHON) -m unittest discover -p '*_test.py'
+
+.PHONY: lint
+lint:
+	pylint --rcfile=.pylintrc rlbridge/

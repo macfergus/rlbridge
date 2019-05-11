@@ -1,6 +1,5 @@
 import random
 
-import numpy as np
 from tqdm import tqdm
 
 from ..bots import init_bot, load_bot, save_bot

@@ -1,3 +1,5 @@
+import json
+
 from .. import bots
 from ..io import parse_options
 from .command import Command

@@ -2,8 +2,6 @@ import datetime
 import os
 from multiprocessing import Process, Queue
 
-from tqdm import tqdm
-
 from .command import Command
 
 

@@ -1,4 +1,3 @@
-import copy
 import os
 import queue
 import random
@@ -60,7 +59,7 @@ class TrainEvalLoop:
     def wait_for_episodes(self):
         ep = self.episode_q.get()
         if ep is None:
-            should_continue = False
+            self.should_continue = False
         else:
             self.episode_buffer.append(ep)
 
@@ -70,7 +69,7 @@ class TrainEvalLoop:
         except queue.Empty:
             return
         if ep is None:
-            should_continue = False
+            self.should_continue = False
         else:
             self.episode_buffer.append(ep)
 
@@ -79,7 +78,7 @@ class TrainEvalLoop:
         num_games = 0
         while num_games < self.eval_games:
             margins = []
-            for i in range(20):
+            for _ in range(20):
                 self.receive()
                 if random.choice([0, 1]) == 0:
                     ns_bot = self.training_bot

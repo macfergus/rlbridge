@@ -5,6 +5,7 @@ import numpy as np
 from . import nputil
 
 
+# pylint: disable=no-self-use
 class ShrinkTest(unittest.TestCase):
     def test_shrink_axis(self):
         x = np.zeros((100, 3, 5))

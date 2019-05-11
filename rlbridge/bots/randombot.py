@@ -1,6 +1,5 @@
 import random
 
-from ..game import Action, Phase
 from .base import Bot
 
 __all__ = [
@@ -19,9 +18,9 @@ def init(options, metadata):
     return RandomBot(metadata)
 
 
-def save(bot, h5group):
+def save(_bot, _h5group):
     return
 
 
-def load(h5group, metadata):
+def load(_bot, metadata):
     return RandomBot(metadata)

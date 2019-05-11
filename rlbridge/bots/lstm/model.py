@@ -1,7 +1,5 @@
-import numpy as np
 from keras import Model
-from keras.layers import (LSTM, Concatenate, Dense, Flatten, Input, Reshape,
-                          TimeDistributed)
+from keras.layers import LSTM, Dense, Input
 from keras.optimizers import Adam
 
 from ...rl import policy_loss
