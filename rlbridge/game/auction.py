@@ -92,7 +92,7 @@ class Denomination:
         return 'NT'
 
     @classmethod
-    def of(self, denom_str):
+    def of(cls, denom_str):
         """Helper for testing and such."""
         if denom_str == 'NT':
             return Denomination.notrump()

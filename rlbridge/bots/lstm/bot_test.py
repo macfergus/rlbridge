@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-from .bot import prepare_training_data
 from ...rl import Episode
+from .bot import prepare_training_data
 
 
 class PrepareTrainingTest(unittest.TestCase):

@@ -1,8 +1,8 @@
 import enum
 
-from ..players import *
-from .auction import *
-from .play import *
+from ..players import Player, Side
+from .auction import Auction
+from .play import PlayState
 
 __all__ = [
     'Action',
@@ -35,9 +35,7 @@ class Action:
     def __str__(self):
         if self.is_call:
             return str(self.call)
-        if self.is_play:
-            return str(self.play)
-        assert False
+        return str(self.play)
 
 
 class GameState:

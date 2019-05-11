@@ -65,40 +65,40 @@ class IsLegalTest(unittest.TestCase):
     def test_winner_leads_next_trick(self):
         game = (
             start_play(declarer=Player.north)
-                .apply(Play.of("3C"))  # east
-                .apply(Play.of("5C"))  # south
-                .apply(Play.of("6C"))  # west
-                .apply(Play.of("KC"))  # north
+            .apply(Play.of("3C"))  # east
+            .apply(Play.of("5C"))  # south
+            .apply(Play.of("6C"))  # west
+            .apply(Play.of("KC"))  # north
         )
         self.assertEqual(Player.north, game.next_player)
 
     def test_off_suit_cannot_win_trick(self):
         game = (
             start_play(declarer=Player.north)
-                .apply(Play.of("4H"))  # east
-                .apply(Play.of("AC"))  # south
-                .apply(Play.of("7H"))  # west
-                .apply(Play.of("2H"))  # north
+            .apply(Play.of("4H"))  # east
+            .apply(Play.of("AC"))  # south
+            .apply(Play.of("7H"))  # west
+            .apply(Play.of("2H"))  # north
         )
         self.assertEqual(Player.west, game.next_player)
 
     def test_trump_wins_trick(self):
         game = (
             start_play(declarer=Player.north)
-                .apply(Play.of("4H"))  # east
-                .apply(Play.of("2S"))  # south
-                .apply(Play.of("7H"))  # west
-                .apply(Play.of("2H"))  # north
+            .apply(Play.of("4H"))  # east
+            .apply(Play.of("2S"))  # south
+            .apply(Play.of("7H"))  # west
+            .apply(Play.of("2H"))  # north
         )
         self.assertEqual(Player.south, game.next_player)
 
     def test_cannot_play_card_twice(self):
         game = (
             start_play(declarer=Player.north)
-                .apply(Play.of("3C"))  # east
-                .apply(Play.of("5C"))  # south
-                .apply(Play.of("6C"))  # west
-                .apply(Play.of("KC"))  # north
+            .apply(Play.of("3C"))  # east
+            .apply(Play.of("5C"))  # south
+            .apply(Play.of("6C"))  # west
+            .apply(Play.of("KC"))  # north
         )
         self.assertFalse(game.is_legal(Play.of("KC")))
 
@@ -113,7 +113,7 @@ class VisibleCardsTest(unittest.TestCase):
     def test_dummy_visible_after_open(self):
         game = (
             start_play(declarer=Player.north)
-                .apply(Play.of("3C"))
+            .apply(Play.of("3C"))
         )
         visible_cards = game.visible_cards(Player.east)
         self.assertCountEqual(
