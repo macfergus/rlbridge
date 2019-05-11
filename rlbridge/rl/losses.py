@@ -8,4 +8,4 @@ __all__ = [
 
 def policy_loss(y_true, y_pred):
     negative_entropy = K.sum(y_pred * K.log(y_pred))
-    return categorical_crossentropy(y_true, y_pred) + 0.0 * negative_entropy
+    return categorical_crossentropy(y_true, y_pred) + 0.1 * negative_entropy

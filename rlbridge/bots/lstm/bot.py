@@ -1,8 +1,9 @@
 import numpy as np
 
+from ... import nputil
 from ...game import Action, Phase
 from ...players import Player
-from ...rl import Episode
+from ...rl import Episode, concat_episodes
 from ..base import Bot
 from .encoder import Encoder
 
@@ -39,6 +40,29 @@ def replay_game(state):
     return zip(states[:-1], actions)
 
 
+def prepare_training_data(episodes):
+    experience = concat_episodes(episodes)
+    states = experience['states']
+    call_actions = experience['call_actions']
+    play_actions = experience['play_actions']
+    rewards = experience['rewards'].reshape((-1, 1))
+
+    calls_made = experience['calls_made'].reshape((-1, 1))
+    plays_made = experience['plays_made'].reshape((-1, 1))
+
+    # On steps where the agent made a decision, we want to reinforce
+    # or deinforce the action according to the reward. But on other
+    # steps, we can just target the "not my turn" sentinel directly.
+    call_cols = call_actions.shape[-1]
+    call_mask = np.repeat(calls_made, call_cols, axis=1)
+    call_actions = np.where(call_mask, rewards * call_actions, call_actions)
+    play_cols = play_actions.shape[-1]
+    play_mask = np.repeat(plays_made, play_cols, axis=1)
+    play_actions = np.where(play_mask, rewards * play_actions, play_actions)
+
+    return states, call_actions, play_actions
+
+
 class LSTMBot(Bot):
     def __init__(self, model, metadata):
         super().__init__(metadata)
@@ -51,14 +75,11 @@ class LSTMBot(Bot):
         n = game_record.shape[0]
         states = np.zeros((1, MAX_GAME, self.encoder.DIM))
         states[0, MAX_GAME - n:] = game_record
-        print(states)
         calls, plays = self.model.predict(states)
         chosen_call = None
         chosen_play = None
         if state.phase == Phase.auction:
             call_p = calls.reshape((-1,))[1:]
-            print('Call')
-            print(state.next_player, call_p, np.sum(call_p))
             for call_index in sample(call_p, self.temperature):
                 call = self.encoder.decode_call_index(call_index)
                 if state.auction.is_legal(call):
@@ -67,8 +88,6 @@ class LSTMBot(Bot):
         else:
             # play
             play_p = plays.reshape((-1,))[1:]
-            print('Play')
-            print(state.next_player, play_p, np.sum(play_p))
             for play_index in sample(play_p, self.temperature):
                 play = self.encoder.decode_play_index(play_index)
                 if state.playstate.is_legal(play):
@@ -93,38 +112,43 @@ class LSTMBot(Bot):
         reward /= 200
 
         game = game_result.game
-        states = self.encoder.encode_full_game(game, perspective)
-        n_states = states.shape[0]
-        calls = np.zeros((n_states, self.encoder.DIM_CALL_ACTION))
-        plays = np.zeros((n_states, self.encoder.DIM_PLAY_ACTION))
-        calls_made = np.zeros(n_states)
-        plays_made = np.zeros(n_states)
-        # Index 0 is reserved for the new game sentinel. No action
-        # follows.
-        calls[0] = self.encoder.encode_call_action(None)
-        plays[0] = self.encoder.encode_play_action(None)
+        n = game.num_states
+        states = np.zeros((n, MAX_GAME, self.encoder.DIM))
+        calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
+        plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
+        calls_made = np.zeros(n)
+        plays_made = np.zeros(n)
+        rewards = reward * np.ones(n)
+
+        full_state = self.encoder.encode_full_game(game, perspective)
+        i = 0
         for game_i, (state, action) in enumerate(replay_game(game)):
-            i = game_i + 1
-            if state.next_decider == perspective:
-                if action.is_call:
-                    calls[i] = self.encoder.encode_call_action(action.call)
-                    plays[i] = self.encoder.encode_play_action(None)
-                    calls_made[i] = 1
-                else:
-                    plays[i] = self.encoder.encode_play_action(action.play)
-                    calls[i] = self.encoder.encode_call_action(None)
-                    plays_made[i] = 1
-            else:
-                # This turn belongs to a different player.
-                calls[i] = self.encoder.encode_call_action(None)
+            if state.next_decider != perspective:
+                continue
+            seq_len = game_i + 2
+            states[i, MAX_GAME - seq_len:] = full_state[:seq_len]
+            if action.is_call:
+                calls[i] = self.encoder.encode_call_action(action.call)
                 plays[i] = self.encoder.encode_play_action(None)
+                calls_made[i] = 1
+            else:
+                plays[i] = self.encoder.encode_play_action(action.play)
+                calls[i] = self.encoder.encode_call_action(None)
+                plays_made[i] = 1
+            i += 1
+        nputil.shrink_axis(states, i)
+        nputil.shrink_axis(calls, i)
+        nputil.shrink_axis(plays, i)
+        nputil.shrink_axis(calls_made, i)
+        nputil.shrink_axis(plays_made, i)
+        nputil.shrink_axis(rewards, i)
         return Episode(
             states=states,
             call_actions=calls,
             play_actions=plays,
             calls_made=calls_made,
             plays_made=plays_made,
-            reward=reward
+            rewards=rewards
         )
 
     def encode_pretraining(self, game_record, perspective):
@@ -155,25 +179,9 @@ class LSTMBot(Bot):
     def pretrain(self, x_state, y_call, y_play):
         self.model.fit(x_state, [y_call, y_play])
 
-    def train_episode(self, episode):
-        n_states = episode['states'].shape[0]
-        states = np.array(episode['states'])
-        call_actions = np.array(episode['call_actions'])
-        play_actions = np.array(episode['play_actions'])
-        reward = episode['reward']
-        # On steps where the agent made a decision, we want to reinforce
-        # or deinforce the action according to the reward. But on other
-        # steps, we can just target the "not my turn" sentinel directly.
-        call_cols = call_actions.shape[-1]
-        call_mask = np.repeat(np.reshape(episode['calls_made'], (-1, 1)), call_cols, axis=1)
-        call_actions = np.where(call_mask, reward * call_actions, call_actions)
-        play_cols = play_actions.shape[-1]
-        play_mask = np.repeat(np.reshape(episode['plays_made'], (-1, 1)), play_cols, axis=1)
-        play_actions = np.where(play_mask, reward * play_actions, play_actions)
-
-        self.reset()
-        for i in range(n_states):
-            x_state = states[i].reshape((1,1) + states[i].shape)
-            y_call = call_actions[i].reshape((1,) + call_actions[i].shape)
-            y_play = play_actions[i].reshape((1,) + play_actions[i].shape)
-            self.model.train_on_batch(x_state, [y_call, y_play])
+    def train(self, episodes):
+        x_state, y_call, y_play = prepare_training_data(episodes)
+        self.model.fit(
+            x_state,
+            [y_call, y_play]
+        )

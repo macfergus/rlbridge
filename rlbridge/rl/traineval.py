@@ -42,17 +42,14 @@ class TrainEvalLoop:
     def run(self):
         while self.should_continue:
             self.ensure_episodes()
-            if len(self.episode_buffer) < 10:
+            if len(self.episode_buffer) < 400:
                 continue
 
-            work = self.episode_buffer[-1000:]
+            work = self.episode_buffer
             self.episode_buffer = []
-            random.shuffle(work)
             self.logger.log('Training on {} episodes'.format(len(work)))
-            for ep in work:
-                self.training_bot.train_episode(ep)
-                self.total_games += 1
-                self.receive()
+            self.total_games += len(work)
+            self.training_bot.train(work)
             work = []
 
             self.logger.log('Evaluating...')
