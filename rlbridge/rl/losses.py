@@ -7,5 +7,8 @@ __all__ = [
 
 
 def policy_loss(y_true, y_pred):
-    negative_entropy = K.sum(y_pred * K.log(y_pred))
-    return categorical_crossentropy(y_true, y_pred) + 0.1 * negative_entropy
+    entropy = -1 * K.sum(y_pred * K.log(y_pred))
+    # Larger entropy == flatter distribution
+    # We want to prefer keeping a little bit of entropy, so we subtract
+    # it from the loss function.
+    return categorical_crossentropy(y_true, y_pred) - 0.1 * entropy
