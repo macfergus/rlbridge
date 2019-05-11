@@ -11,4 +11,4 @@ def policy_loss(y_true, y_pred):
     # Larger entropy == flatter distribution
     # We want to prefer keeping a little bit of entropy, so we subtract
     # it from the loss function.
-    return categorical_crossentropy(y_true, y_pred) - 0.1 * entropy
+    return categorical_crossentropy(y_true, y_pred) - 0.05 * entropy

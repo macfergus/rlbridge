@@ -33,7 +33,7 @@ class TrainEvalLoop:
         self.out_fname = out_fname
         self.logger = logger
         self.episode_buffer = []
-        self.eval_games = 100
+        self.eval_games = 200
         self.should_continue = True
         self.total_games = 0
 
@@ -41,15 +41,15 @@ class TrainEvalLoop:
 
     def run(self):
         while self.should_continue:
-            self.ensure_episodes()
-            if len(self.episode_buffer) < 400:
+            self.wait_for_episodes()
+            if len(self.episode_buffer) < 10:
                 continue
 
             work = self.episode_buffer
             self.episode_buffer = []
             self.logger.log('Training on {} episodes'.format(len(work)))
-            self.total_games += len(work)
             self.training_bot.train(work)
+            self.total_games += len(work)
             work = []
 
             self.logger.log('Evaluating...')
@@ -57,7 +57,7 @@ class TrainEvalLoop:
                 self.promote()
         self.logger.log('Bye!!')
 
-    def ensure_episodes(self):
+    def wait_for_episodes(self):
         ep = self.episode_q.get()
         if ep is None:
             should_continue = False
@@ -94,12 +94,12 @@ class TrainEvalLoop:
                     margins.append(result.points_ew - result.points_ns)
                 num_games += 1
             mean = np.mean(margins)
-            lower, upper = estimate_ci(margins, 0.1, 0.9)
+            lower, upper = estimate_ci(margins, 0.05, 0.95)
             self.logger.log('eval {} games {:.1f}, {:.1f}'.format(
                 num_games,
                 lower, upper
             ))
-            if lower > 0:
+            if lower > 0 or upper < 0:
                 break
         self.logger.log(
             'Candidate gained {:.1f} points per hand over {} games '
