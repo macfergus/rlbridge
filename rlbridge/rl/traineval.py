@@ -42,7 +42,7 @@ class TrainEvalLoop:
     def run(self):
         while self.should_continue:
             self.wait_for_episodes()
-            if len(self.episode_buffer) < 10:
+            if len(self.episode_buffer) < 100:
                 continue
 
             work = self.episode_buffer
@@ -110,9 +110,6 @@ class TrainEvalLoop:
         return lower > 0
 
     def promote(self):
-        # Any received games at this point came from an old worker.
-        self.episode_buffer = []
-
         out_fname = '{}_{:06d}'.format(self.out_fname, self.total_games)
         self.logger.log('Saving as {} and promoting'.format(out_fname))
         bots.save_bot(self.training_bot, out_fname)

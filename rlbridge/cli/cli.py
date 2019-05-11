@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from . import demogame, evaluate, initbot, pretrain, selfplay
+from . import benchmark, demogame, evaluate, initbot, pretrain, selfplay
 
 
 def cli():
@@ -9,6 +9,7 @@ def cli():
     subparsers = parser.add_subparsers(dest='command')
 
     commands = [
+        benchmark.Benchmark(),
         demogame.DemoGame(),
         evaluate.Evaluate(),
         initbot.InitBot(),

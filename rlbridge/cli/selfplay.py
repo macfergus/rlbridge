@@ -41,7 +41,14 @@ def do_selfplay(q, logger, ref_fname):
                 logger.log('Starting self-play with {}'.format(ref_path))
                 cur_bot = ref_path
                 bot = bots.load_bot(ref_path)
+                num_games = 0
             game_result = simulate_game(bot, bot)
+            num_games += 1
+            if num_games % 20 == 0:
+                logger.log('Completed {} games with {}'.format(
+                    num_games,
+                    ref_path
+                ))
             # One game makes 4 episodes (from each player's perspective)
             q.put(bot.encode_episode(game_result, Player.north))
             q.put(bot.encode_episode(game_result, Player.east))
