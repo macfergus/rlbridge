@@ -47,19 +47,17 @@ class Evaluate(Command):
         mean_margin = np.mean(margins)
         lower, upper = estimate_ci(margins, 0.05, 0.95, n_bootstrap=1000)
         if mean_margin > 0:
-            print('Winner is ', args.bot1)
             winner = bot1
             loser = bot2
         else:
-            print('Winner is ', args.bot2)
             winner = bot2
             loser = bot1
             mean_margin = -1 * mean_margin
             lower = -1 * lower
             upper = -1 * upper
         print('{} beats {} by {:.1f} points per game (over {} games)'.format(
-            winner.name(),
-            loser.name(),
+            winner.identify(),
+            loser.identify(),
             mean_margin,
             args.num_games
         ))

@@ -19,6 +19,7 @@ def train_and_evaluate(
         q, ref_fname, out_patt,
         episodes_per_train, eval_games, eval_chunk, eval_threshold,
         logger):
+    logger.log('Running in PID {}'.format(os.getpid()))
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
 
@@ -34,6 +35,7 @@ def train_and_evaluate(
 
 
 def do_selfplay(q, logger, ref_fname):
+    logger.log('Running in PID {}'.format(os.getpid()))
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
 
