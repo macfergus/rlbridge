@@ -26,15 +26,22 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
 
 
 class TrainEvalLoop:
-    def __init__(self, episode_q, ref_fname, out_fname, logger):
+    def __init__(
+            self, episode_q, ref_fname, out_fname, logger,
+            eval_games=200,
+            eval_chunk=20,
+            eval_threshold=0.05):
         self.episode_q = episode_q
         self.ref_fname = ref_fname
         self.out_fname = out_fname
         self.logger = logger
         self.episode_buffer = []
-        self.eval_games = 200
         self.should_continue = True
         self.total_games = 0
+
+        self._eval_games = eval_games
+        self._eval_chunk = eval_chunk
+        self._eval_threshold = eval_threshold
 
         self.training_bot = self.load_ref_bot()
 
@@ -76,9 +83,11 @@ class TrainEvalLoop:
     def evaluate_bot(self):
         ref_bot = self.load_ref_bot()
         num_games = 0
-        while num_games < self.eval_games:
+        lower_p = self._eval_threshold
+        upper_p = 1 - self._eval_threshold
+        while num_games < self._eval_games:
             margins = []
-            for _ in range(20):
+            for _ in range(self._eval_chunk):
                 self.receive()
                 if random.choice([0, 1]) == 0:
                     ns_bot = self.training_bot
@@ -93,7 +102,7 @@ class TrainEvalLoop:
                     margins.append(result.points_ew - result.points_ns)
                 num_games += 1
             mean = np.mean(margins)
-            lower, upper = estimate_ci(margins, 0.05, 0.95)
+            lower, upper = estimate_ci(margins, lower_p, upper_p)
             self.logger.log('eval {} games {:.1f}, {:.1f}'.format(
                 num_games,
                 lower, upper

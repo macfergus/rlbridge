@@ -2,7 +2,7 @@ import numpy as np
 
 from ...game import Action, Phase
 from ...players import Player
-from ...rl import Episode, concat_episodes
+from ...rl import Decision, Episode, concat_episodes
 from ..base import Bot
 from .encoder import Encoder
 
@@ -112,11 +112,14 @@ class LSTMBot(Bot):
         else:
             chosen_action = Action.make_play(chosen_play)
         if recorder is not None:
-            recorder.record_decision(Decision(
-                state=states[0],
-                action=chosen_action,
-                expected_value=values[0]
-            ))
+            recorder.record_decision(
+                Decision(
+                    state=states[0],
+                    action=chosen_action,
+                    expected_value=values[0]
+                ),
+                state.next_player
+            )
         return chosen_action
 
     def encode_episode(self, game_result, perspective, decisions):
@@ -131,8 +134,8 @@ class LSTMBot(Bot):
         advantages = np.zeros(n)
 
         for i, decision in enumerate(decisions):
-            states[i] = decisions[i]['state']
-            action = decisions[i]['chosen_action']
+            states[i] = decision['state']
+            action = decision['action']
             if action.is_call:
                 calls[i] = self.encoder.encode_call_action(action.call)
                 plays[i] = self.encoder.encode_play_action(None)
@@ -141,7 +144,7 @@ class LSTMBot(Bot):
                 plays[i] = self.encoder.encode_play_action(action.play)
                 calls[i] = self.encoder.encode_call_action(None)
                 plays_made[i] = 1
-            advantages[i] = reward - decisions[i]['expected_value']
+            advantages[i] = reward - decision['expected_value']
         return Episode(
             states=states,
             call_actions=calls,

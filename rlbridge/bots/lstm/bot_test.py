@@ -67,3 +67,7 @@ class PrepareTrainingTest(unittest.TestCase):
                 [0, 0, 0, -3, 0],
             ])
         )
+        np.testing.assert_array_equal(
+            y_value,
+            np.array([5, 5, -3, -3, -3])
+        )

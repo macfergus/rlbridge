@@ -1,10 +1,15 @@
 import numpy as np
 
 __all__ = [
+    'Decision',
     'Episode',
     'ExperienceRecorder',
     'concat_episodes',
 ]
+
+
+class Decision(dict):
+    pass
 
 
 class Episode(dict):
@@ -24,4 +29,13 @@ def concat_episodes(episode_list):
 
 
 class ExperienceRecorder:
-    pass
+    def __init__(self):
+        self._decisions = {}
+
+    def record_decision(self, decision, player):
+        if player not in self._decisions:
+            self._decisions[player] = []
+        self._decisions[player].append(decision)
+
+    def get_decisions(self, player):
+        return list(self._decisions[player])

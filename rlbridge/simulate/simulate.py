@@ -29,7 +29,6 @@ def simulate_game(ns_bot, ew_bot, recorder=None):
         eastwest_vulnerable=random.choice([True, False])
     )
     while not hand.is_over():
-        next_player = hand.next_player
         next_decider = hand.next_decider
         agent = agents[next_decider]
         action = agent.select_action(hand, recorder)

@@ -15,12 +15,19 @@ class QLogger:
         self.q.put('{} ({}) {}'.format(ts, self.src, msg))
 
 
-def train_and_evaluate(q, ref_fname, out_patt, logger):
+def train_and_evaluate(
+        q, ref_fname, out_patt,
+        eval_games, eval_chunk, eval_threshold, logger):
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
 
     from ..selfplay import TrainEvalLoop
-    worker = TrainEvalLoop(q, ref_fname, out_patt, logger)
+    worker = TrainEvalLoop(
+        q, ref_fname, out_patt, logger,
+        eval_games=eval_games,
+        eval_chunk=eval_chunk,
+        eval_threshold=eval_threshold
+    )
     worker.run()
 
 
@@ -50,10 +57,26 @@ def do_selfplay(q, logger, ref_fname):
                     ref_path
                 ))
             # One game makes 4 episodes (from each player's perspective)
-            q.put(bot.encode_episode(recorder.get_episode(Player.north)))
-            q.put(bot.encode_episode(recorder.get_episode(Player.east)))
-            q.put(bot.encode_episode(recorder.get_episode(Player.south)))
-            q.put(bot.encode_episode(recorder.get_episode(Player.west)))
+            q.put(bot.encode_episode(
+                game_result,
+                Player.north,
+                recorder.get_decisions(Player.north)
+            ))
+            q.put(bot.encode_episode(
+                game_result,
+                Player.east,
+                recorder.get_decisions(Player.east)
+            ))
+            q.put(bot.encode_episode(
+                game_result,
+                Player.south,
+                recorder.get_decisions(Player.south)
+            ))
+            q.put(bot.encode_episode(
+                game_result,
+                Player.west,
+                recorder.get_decisions(Player.west)
+            ))
     finally:
         q.put(None)
 
@@ -68,6 +91,9 @@ def show_log(log_q):
 
 class SelfPlay(Command):
     def register_arguments(self, parser):
+        parser.add_argument('--eval-games', type=int, default=200)
+        parser.add_argument('--eval-chunk', type=int, default=20)
+        parser.add_argument('--eval-threshold', type=float, default=0.05)
         parser.add_argument('bot')
         parser.add_argument('checkpoint_out')
 
@@ -90,6 +116,9 @@ class SelfPlay(Command):
                 q,
                 ref_fname,
                 checkpoint_patt,
+                args.eval_games,
+                args.eval_chunk,
+                args.eval_threshold,
                 QLogger(log_q, 'trainer')
             )
         )
