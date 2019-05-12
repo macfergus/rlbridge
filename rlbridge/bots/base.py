@@ -13,3 +13,6 @@ class Bot:
 
     def name(self):
         return self.metadata['name']
+
+    def identify(self):
+        return self.name()

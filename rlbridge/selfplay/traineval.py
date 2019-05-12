@@ -54,7 +54,14 @@ class TrainEvalLoop:
             work = self.episode_buffer
             self.episode_buffer = []
             self.logger.log('Training on {} episodes'.format(len(work)))
-            self.training_bot.train(work)
+            stats = self.training_bot.train(work)
+            self.logger.log('Loss: {:.3f} '.format(stats['loss']))
+            self.logger.log(
+                'Call: {call_loss:.3f} '
+                'Play: {play_loss:.3f} '
+                'Value: {value_loss:.3f}'.format(**stats)
+            )
+            self.training_bot.add_games(len(work))
             self.total_games += len(work)
             work = []
 
@@ -118,7 +125,7 @@ class TrainEvalLoop:
         return lower > 0
 
     def promote(self):
-        out_fname = '{}_{:06d}'.format(self.out_fname, self.total_games)
+        out_fname = '{}_{:07d}'.format(self.out_fname, self.total_games)
         self.logger.log('Saving as {} and promoting'.format(out_fname))
         bots.save_bot(self.training_bot, out_fname)
 

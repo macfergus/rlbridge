@@ -84,6 +84,17 @@ class LSTMBot(Bot):
         self.model = model
         self.temperature = 1.0
 
+    def identify(self):
+        return '{}_{:07d}'.format(
+            self.name(),
+            self.metadata.get('num_games', 0)
+        )
+
+    def add_games(self, num_games):
+        if 'num_games' not in self.metadata:
+            self.metadata['num_games'] = 0
+        self.metadata['num_games'] += num_games
+
     def select_action(self, state, recorder=None):
         game_record = self.encoder.encode_full_game(state, state.next_player)
         n = game_record.shape[0]
@@ -188,7 +199,14 @@ class LSTMBot(Bot):
 
     def train(self, episodes):
         x_state, y_call, y_play, y_value = prepare_training_data(episodes)
-        self.model.fit(
+        history = self.model.fit(
             x_state,
-            [y_call, y_play, y_value]
+            [y_call, y_play, y_value],
+            verbose=0
         )
+        return {
+            'loss': history.history['loss'][0],
+            'call_loss': history.history['dense_1_loss'][0],
+            'play_loss': history.history['dense_2_loss'][0],
+            'value_loss': history.history['dense_3_loss'][0],
+        }

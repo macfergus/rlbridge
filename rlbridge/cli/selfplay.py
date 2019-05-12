@@ -44,9 +44,9 @@ def do_selfplay(q, logger, ref_fname):
         while True:
             ref_path = open(ref_fname).read().strip()
             if ref_path != cur_bot:
-                logger.log('Starting self-play with {}'.format(ref_path))
                 cur_bot = ref_path
                 bot = bots.load_bot(ref_path)
+                logger.log('Starting self-play with {}'.format(bot.identify()))
                 num_games = 0
             recorder = ExperienceRecorder()
             game_result = simulate_game(bot, bot, recorder)
@@ -54,7 +54,7 @@ def do_selfplay(q, logger, ref_fname):
             if num_games % 20 == 0:
                 logger.log('Completed {} games with {}'.format(
                     num_games,
-                    ref_path
+                    bot.identify()
                 ))
             # One game makes 4 episodes (from each player's perspective)
             q.put(bot.encode_episode(

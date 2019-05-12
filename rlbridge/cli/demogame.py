@@ -15,15 +15,17 @@ class DemoGame(Command):
         parser.add_argument('eastwest_bot')
 
     def run(self, args):
+        ns_bot = load_bot(args.northsouth_bot)
+        ew_bot = load_bot(args.eastwest_bot)
         agents = {
-            Player.north: load_bot(args.northsouth_bot),
-            Player.east: load_bot(args.eastwest_bot),
-            Player.south: load_bot(args.northsouth_bot),
-            Player.west: load_bot(args.eastwest_bot),
+            Player.north: ns_bot,
+            Player.east: ew_bot,
+            Player.south: ns_bot,
+            Player.west: ew_bot,
         }
         print('{} vs {}'.format(
-            agents[Player.north].name(),
-            agents[Player.east].name()
+            agents[Player.north].identify(),
+            agents[Player.east].identify()
         ))
         hand = GameState.new_deal(
             cards.new_deal(),
