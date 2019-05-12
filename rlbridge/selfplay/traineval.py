@@ -28,6 +28,7 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
 class TrainEvalLoop:
     def __init__(
             self, episode_q, ref_fname, out_fname, logger,
+            episodes_per_train=200,
             eval_games=200,
             eval_chunk=20,
             eval_threshold=0.05):
@@ -39,6 +40,7 @@ class TrainEvalLoop:
         self.should_continue = True
         self.total_games = 0
 
+        self._episodes_per_train = episodes_per_train
         self._eval_games = eval_games
         self._eval_chunk = eval_chunk
         self._eval_threshold = eval_threshold
@@ -48,7 +50,7 @@ class TrainEvalLoop:
     def run(self):
         while self.should_continue:
             self.wait_for_episodes()
-            if len(self.episode_buffer) < 100:
+            if len(self.episode_buffer) < self._episodes_per_train:
                 continue
 
             work = self.episode_buffer

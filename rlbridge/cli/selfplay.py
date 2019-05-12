@@ -17,13 +17,15 @@ class QLogger:
 
 def train_and_evaluate(
         q, ref_fname, out_patt,
-        eval_games, eval_chunk, eval_threshold, logger):
+        episodes_per_train, eval_games, eval_chunk, eval_threshold,
+        logger):
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
 
     from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(
         q, ref_fname, out_patt, logger,
+        episodes_per_train=episodes_per_train,
         eval_games=eval_games,
         eval_chunk=eval_chunk,
         eval_threshold=eval_threshold
@@ -91,6 +93,7 @@ def show_log(log_q):
 
 class SelfPlay(Command):
     def register_arguments(self, parser):
+        parser.add_argument('--episodes-per-train', type=int, default=200)
         parser.add_argument('--eval-games', type=int, default=200)
         parser.add_argument('--eval-chunk', type=int, default=20)
         parser.add_argument('--eval-threshold', type=float, default=0.05)
@@ -116,6 +119,7 @@ class SelfPlay(Command):
                 q,
                 ref_fname,
                 checkpoint_patt,
+                args.episodes_per_train,
                 args.eval_games,
                 args.eval_chunk,
                 args.eval_threshold,
