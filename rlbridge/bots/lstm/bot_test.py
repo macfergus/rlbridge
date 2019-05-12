@@ -21,6 +21,7 @@ class PrepareTrainingTest(unittest.TestCase):
             calls_made=np.array([1, 0]),
             plays_made=np.array([0, 1]),
             rewards=np.array([5, 5]),
+            advantages=np.array([4, 3]),
         )
         ep2 = Episode(
             states=np.ones((3, 3, 5)),
@@ -37,9 +38,10 @@ class PrepareTrainingTest(unittest.TestCase):
             calls_made=np.array([1, 1, 0]),
             plays_made=np.array([0, 0, 1]),
             rewards=np.array([-3, -3, -3]),
+            advantages=np.array([-1, -2, -3]),
         )
 
-        x_state, y_call, y_play = prepare_training_data([ep1, ep2])
+        x_state, y_call, y_play, y_value = prepare_training_data([ep1, ep2])
 
         np.testing.assert_array_equal(
             x_state,
@@ -48,10 +50,10 @@ class PrepareTrainingTest(unittest.TestCase):
         np.testing.assert_array_equal(
             y_call,
             np.array([
-                [5, 0, 0],
+                [4, 0, 0],
                 [0, 0, 1],
-                [-3, 0, 0],
-                [0, -3, 0],
+                [-1, 0, 0],
+                [0, -2, 0],
                 [0, 0, 1],
             ])
         )
@@ -59,7 +61,7 @@ class PrepareTrainingTest(unittest.TestCase):
             y_play,
             np.array([
                 [0, 0, 0, 0, 1],
-                [0, 5, 0, 0, 0],
+                [0, 3, 0, 0, 0],
                 [0, 0, 0, 0, 1],
                 [0, 0, 0, 0, 1],
                 [0, 0, 0, -3, 0],

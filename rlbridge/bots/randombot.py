@@ -10,7 +10,7 @@ __all__ = [
 
 
 class RandomBot(Bot):
-    def select_action(self, state):
+    def select_action(self, state, recorder=None):
         return random.choice(state.legal_actions())
 
 

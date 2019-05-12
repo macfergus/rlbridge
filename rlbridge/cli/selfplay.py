@@ -30,6 +30,7 @@ def do_selfplay(q, logger, ref_fname):
 
     from .. import bots
     from ..players import Player
+    from ..rl import ExperienceRecorder
     from ..simulate import simulate_game
     cur_bot = None
     try:
@@ -40,7 +41,8 @@ def do_selfplay(q, logger, ref_fname):
                 cur_bot = ref_path
                 bot = bots.load_bot(ref_path)
                 num_games = 0
-            game_result = simulate_game(bot, bot)
+            recorder = ExperienceRecorder()
+            game_result = simulate_game(bot, bot, recorder)
             num_games += 1
             if num_games % 20 == 0:
                 logger.log('Completed {} games with {}'.format(
@@ -48,10 +50,10 @@ def do_selfplay(q, logger, ref_fname):
                     ref_path
                 ))
             # One game makes 4 episodes (from each player's perspective)
-            q.put(bot.encode_episode(game_result, Player.north))
-            q.put(bot.encode_episode(game_result, Player.east))
-            q.put(bot.encode_episode(game_result, Player.south))
-            q.put(bot.encode_episode(game_result, Player.west))
+            q.put(bot.encode_episode(recorder.get_episode(Player.north)))
+            q.put(bot.encode_episode(recorder.get_episode(Player.east)))
+            q.put(bot.encode_episode(recorder.get_episode(Player.south)))
+            q.put(bot.encode_episode(recorder.get_episode(Player.west)))
     finally:
         q.put(None)
 

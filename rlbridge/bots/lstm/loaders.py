@@ -9,7 +9,8 @@ def init(options, metadata):
     mod = model.construct_model(
         input_shape=enc.input_shape(),
         lstm_size=int(options.get('lstm_size', 512)),
-        lstm_depth=int(options.get('lstm_depth', 2))
+        lstm_depth=int(options.get('lstm_depth', 2)),
+        hidden_size=int(options.get('hidden_size', 0))
     )
     return LSTMBot(mod, metadata)
 

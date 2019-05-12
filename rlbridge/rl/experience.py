@@ -2,6 +2,7 @@ import numpy as np
 
 __all__ = [
     'Episode',
+    'ExperienceRecorder',
     'concat_episodes',
 ]
 
@@ -20,3 +21,7 @@ def concat_episodes(episode_list):
     for k in keys:
         result[k] = np.concatenate([ep[k] for ep in episode_list], axis=0)
     return Experience(result)
+
+
+class ExperienceRecorder:
+    pass
