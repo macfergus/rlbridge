@@ -19,7 +19,7 @@ def train_and_evaluate(q, ref_fname, out_patt, logger):
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
 
-    from ..rl import TrainEvalLoop
+    from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(q, ref_fname, out_patt, logger)
     worker.run()
 
