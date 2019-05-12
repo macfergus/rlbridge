@@ -57,21 +57,21 @@ class TrainEvalLoop:
         self.logger.log('Bye!!')
 
     def wait_for_episodes(self):
-        ep = self.episode_q.get()
-        if ep is None:
+        episode = self.episode_q.get()
+        if episode is None:
             self.should_continue = False
         else:
-            self.episode_buffer.append(ep)
+            self.episode_buffer.append(episode)
 
     def receive(self):
         try:
-            ep = self.episode_q.get_nowait()
+            episode = self.episode_q.get_nowait()
         except queue.Empty:
             return
-        if ep is None:
+        if episode is None:
             self.should_continue = False
         else:
-            self.episode_buffer.append(ep)
+            self.episode_buffer.append(episode)
 
     def evaluate_bot(self):
         ref_bot = self.load_ref_bot()

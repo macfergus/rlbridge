@@ -2,8 +2,8 @@ from keras import Model
 from keras.layers import LSTM, Dense, Input
 from keras.optimizers import Adam
 
-from ...rl import policy_loss
 from .limits import MAX_GAME
+from .losses import policy_loss
 
 
 def construct_model(input_shape, lstm_size=512, lstm_depth=2):

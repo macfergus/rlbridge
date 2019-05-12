@@ -1,6 +1,7 @@
 from ... import kerasutil
-from ...rl import policy_loss
-from . import bot, encoder, model
+from . import encoder, model
+from .bot import LSTMBot
+from .losses import policy_loss
 
 
 def init(options, metadata):
@@ -10,7 +11,7 @@ def init(options, metadata):
         lstm_size=int(options.get('lstm_size', 512)),
         lstm_depth=int(options.get('lstm_depth', 2))
     )
-    return bot.LSTMBot(mod, metadata)
+    return LSTMBot(mod, metadata)
 
 
 def save(bot, h5group):
@@ -24,4 +25,4 @@ def load(h5group, metadata):
         model_group,
         custom_objects={'policy_loss': policy_loss}
     )
-    return bot.LSTMBot(mod, metadata)
+    return LSTMBot(mod, metadata)

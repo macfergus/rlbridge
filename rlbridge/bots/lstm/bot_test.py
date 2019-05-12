@@ -48,20 +48,20 @@ class PrepareTrainingTest(unittest.TestCase):
         np.testing.assert_array_equal(
             y_call,
             np.array([
-                [5,  0, 0],
-                [0,  0, 1],
+                [5, 0, 0],
+                [0, 0, 1],
                 [-3, 0, 0],
                 [0, -3, 0],
-                [0,  0, 1],
+                [0, 0, 1],
             ])
         )
         np.testing.assert_array_equal(
             y_play,
             np.array([
-                [0, 0, 0,  0, 1],
-                [0, 5, 0,  0, 0],
-                [0, 0, 0,  0, 1],
-                [0, 0, 0,  0, 1],
+                [0, 0, 0, 0, 1],
+                [0, 5, 0, 0, 0],
+                [0, 0, 0, 0, 1],
+                [0, 0, 0, 0, 1],
                 [0, 0, 0, -3, 0],
             ])
         )
