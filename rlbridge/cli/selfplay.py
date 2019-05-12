@@ -17,6 +17,7 @@ class QLogger:
 
 def train_and_evaluate(
         q, ref_fname, out_patt,
+        gate,
         max_games, episodes_per_train,
         eval_games, eval_chunk, eval_threshold,
         logger):
@@ -28,6 +29,7 @@ def train_and_evaluate(
     worker = TrainEvalLoop(
         q, ref_fname, out_patt, logger,
         episodes_per_train=episodes_per_train,
+        gate=gate,
         max_games=max_games,
         eval_games=eval_games,
         eval_chunk=eval_chunk,
@@ -101,6 +103,9 @@ class SelfPlay(Command):
             '--max-games', type=int, default=10000,
             help='Restart the trainer process after this many games.'
         )
+        parser.add_argument('--gate', dest='gate', action='store_true')
+        parser.add_argument('--no-gate', dest='gate', action='store_false')
+        parser.set_defaults(gate=True)
         parser.add_argument('--episodes-per-train', type=int, default=200)
         parser.add_argument('--eval-games', type=int, default=200)
         parser.add_argument('--eval-chunk', type=int, default=20)
@@ -137,6 +142,7 @@ class SelfPlay(Command):
                         q,
                         ref_fname,
                         checkpoint_patt,
+                        args.gate,
                         args.max_games,
                         args.episodes_per_train,
                         args.eval_games,

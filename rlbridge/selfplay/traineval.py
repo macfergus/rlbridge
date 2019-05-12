@@ -28,6 +28,7 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
 class TrainEvalLoop:
     def __init__(
             self, episode_q, ref_fname, out_fname, logger,
+            gate=True,
             max_games=10000,
             episodes_per_train=200,
             eval_games=200,
@@ -41,6 +42,7 @@ class TrainEvalLoop:
         self.should_continue = True
         self.total_games = 0
 
+        self._gate = False
         self._max_games = max_games
         self._episodes_per_train = episodes_per_train
         self._eval_games = eval_games
@@ -69,8 +71,11 @@ class TrainEvalLoop:
             self.total_games += len(work)
             work = []
 
-            self.logger.log('Evaluating...')
-            if self.evaluate_bot():
+            promote = True
+            if self._gate:
+                self.logger.log('Evaluating...')
+                promote = self.evaluate_bot()
+            if promote:
                 self.promote()
             if self.total_games >= self._max_games:
                 # Shut the process down to free up memory.
