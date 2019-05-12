@@ -1,6 +1,6 @@
 import enum
 
-from ..players import Player, Side
+from ..players import Side
 from .auction import Auction
 from .play import PlayState
 

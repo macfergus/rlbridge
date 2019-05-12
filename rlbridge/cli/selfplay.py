@@ -17,7 +17,8 @@ class QLogger:
 
 def train_and_evaluate(
         q, ref_fname, out_patt,
-        episodes_per_train, eval_games, eval_chunk, eval_threshold,
+        max_games, episodes_per_train,
+        eval_games, eval_chunk, eval_threshold,
         logger):
     logger.log('Running in PID {}'.format(os.getpid()))
     from ..import kerasutil
@@ -27,6 +28,7 @@ def train_and_evaluate(
     worker = TrainEvalLoop(
         q, ref_fname, out_patt, logger,
         episodes_per_train=episodes_per_train,
+        max_games=max_games,
         eval_games=eval_games,
         eval_chunk=eval_chunk,
         eval_threshold=eval_threshold
@@ -95,6 +97,10 @@ def show_log(log_q):
 
 class SelfPlay(Command):
     def register_arguments(self, parser):
+        parser.add_argument(
+            '--max-games', type=int, default=10000,
+            help='Restart the trainer process after this many games.'
+        )
         parser.add_argument('--episodes-per-train', type=int, default=200)
         parser.add_argument('--eval-games', type=int, default=200)
         parser.add_argument('--eval-chunk', type=int, default=20)
@@ -115,26 +121,34 @@ class SelfPlay(Command):
             args=(log_q,)
         )
         logger_proc.start()
-        train_proc = Process(
-            target=train_and_evaluate,
-            args=(
-                q,
-                ref_fname,
-                checkpoint_patt,
-                args.episodes_per_train,
-                args.eval_games,
-                args.eval_chunk,
-                args.eval_threshold,
-                QLogger(log_q, 'trainer')
-            )
-        )
-        train_proc.start()
         play_proc = Process(
             target=do_selfplay,
             args=(q, QLogger(log_q, 'selfplay'), ref_fname)
         )
         play_proc.start()
-        play_proc.join()
-        train_proc.join()
-        log_q.put(None)
-        logger_proc.join()
+        try:
+            while True:
+                # To prevent running out of memory, the training process
+                # will shut itself down periodically. This loop restarts
+                # it.
+                train_proc = Process(
+                    target=train_and_evaluate,
+                    args=(
+                        q,
+                        ref_fname,
+                        checkpoint_patt,
+                        args.max_games,
+                        args.episodes_per_train,
+                        args.eval_games,
+                        args.eval_chunk,
+                        args.eval_threshold,
+                        QLogger(log_q, 'trainer')
+                    )
+                )
+                train_proc.start()
+                train_proc.join()
+        finally:
+            play_proc.join()
+            train_proc.join()
+            log_q.put(None)
+            logger_proc.join()
