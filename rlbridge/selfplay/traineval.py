@@ -27,7 +27,7 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
 
 class TrainEvalLoop:
     def __init__(
-            self, episode_q, ref_fname, out_fname, logger,
+            self, episode_q, ref_fname, out_dir, logger,
             gate=True,
             max_games=10000,
             episodes_per_train=200,
@@ -36,7 +36,7 @@ class TrainEvalLoop:
             eval_threshold=0.05):
         self.episode_q = episode_q
         self.ref_fname = ref_fname
-        self.out_fname = out_fname
+        self.out_dir = out_dir
         self.logger = logger
         self.episode_buffer = []
         self.should_continue = True
@@ -140,7 +140,8 @@ class TrainEvalLoop:
         return lower > 0
 
     def promote(self):
-        out_fname = '{}_{:07d}'.format(self.out_fname, self.total_games)
+        out_fname = os.path.join(self.out_dir, self.training_bot.identify())
+        out_fname = out_fname.replace(' ', '_')
         self.logger.log('Saving as {} and promoting'.format(out_fname))
         bots.save_bot(self.training_bot, out_fname)
 

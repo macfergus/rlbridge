@@ -98,6 +98,9 @@ class LSTMBot(Bot):
     def select_action(self, state, recorder=None):
         game_record = self.encoder.encode_full_game(state, state.next_player)
         n = game_record.shape[0]
+        if n > MAX_GAME:
+            game_record = game_record[-MAX_GAME:]
+            n = MAX_GAME
         states = np.zeros((1, MAX_GAME, self.encoder.DIM))
         states[0, MAX_GAME - n:] = game_record
         calls, plays, values = self.model.predict(states)

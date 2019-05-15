@@ -16,7 +16,7 @@ class QLogger:
 
 
 def train_and_evaluate(
-        q, ref_fname, out_patt,
+        q, ref_fname, out_dir,
         gate,
         max_games, episodes_per_train,
         eval_games, eval_chunk, eval_threshold,
@@ -27,7 +27,7 @@ def train_and_evaluate(
 
     from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(
-        q, ref_fname, out_patt, logger,
+        q, ref_fname, out_dir, logger,
         episodes_per_train=episodes_per_train,
         gate=gate,
         max_games=max_games,
@@ -55,6 +55,7 @@ def do_selfplay(q, logger, ref_fname):
                 cur_bot = ref_path
                 bot = bots.load_bot(ref_path)
                 logger.log('Starting self-play with {}'.format(bot.identify()))
+                bot.temperature = 1.5
                 num_games = 0
             recorder = ExperienceRecorder()
             game_result = simulate_game(bot, bot, recorder)
@@ -117,7 +118,6 @@ class SelfPlay(Command):
         ref_fname = os.path.join(args.checkpoint_out, 'ref')
         with open(ref_fname, 'w') as outf:
             outf.write(args.bot)
-        checkpoint_patt = os.path.join(args.checkpoint_out, 'checkpoint')
 
         q = Queue()
         log_q = Queue()
@@ -141,7 +141,7 @@ class SelfPlay(Command):
                     args=(
                         q,
                         ref_fname,
-                        checkpoint_patt,
+                        args.checkpoint_out,
                         args.gate,
                         args.max_games,
                         args.episodes_per_train,
