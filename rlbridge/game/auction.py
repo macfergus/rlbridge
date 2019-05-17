@@ -159,7 +159,7 @@ class Call:
         self.is_pass = is_pass
 
     @classmethod
-    def bid(cls, the_bid):
+    def make_bid(cls, the_bid):
         return Call(bid=the_bid)
 
     @classmethod
@@ -201,10 +201,10 @@ class Call:
             return Call.redouble()
         if call_str == 'pass':
             return Call.pass_turn()
-        return Call.bid(Bid.of(call_str))
+        return Call.make_bid(Bid.of(call_str))
 
 
-ALL_CALLS = [Call.bid(bid) for bid in ALL_BIDS] + \
+ALL_CALLS = [Call.make_bid(bid) for bid in ALL_BIDS] + \
     [Call.double(), Call.redouble(), Call.pass_turn()]
 
 

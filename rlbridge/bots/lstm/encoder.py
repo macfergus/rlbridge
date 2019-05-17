@@ -99,7 +99,7 @@ class Encoder:
             Denomination.spades(),
             Denomination.notrump(),
         ]
-        return Call.bid(Bid(denoms[denom_index], tricks_index + 1))
+        return Call.make_bid(Bid(denoms[denom_index], tricks_index + 1))
 
     def encode_legal_calls(self, state):
         calls = np.zeros(self.DIM_CALL_ACTION)

@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 
 from .. import bots
+from ..io import parse_options
 from ..simulate import simulate_game
 from .command import Command
 
@@ -22,6 +23,7 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap):
 
 class Evaluate(Command):
     def register_arguments(self, parser):
+        parser.add_argument('--options')
         parser.add_argument('--num-games', type=int, default=1)
         parser.add_argument('bot1')
         parser.add_argument('bot2')
@@ -29,6 +31,11 @@ class Evaluate(Command):
     def run(self, args):
         bot1 = bots.load_bot(args.bot1)
         bot2 = bots.load_bot(args.bot2)
+        if args.options:
+            opts = parse_options(args.options)
+        for key, value in opts.items():
+            bot1.set_option(key, value)
+            bot2.set_option(key, value)
 
         margins = []
         for _ in tqdm(range(args.num_games)):

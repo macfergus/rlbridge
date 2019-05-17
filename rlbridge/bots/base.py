@@ -1,6 +1,10 @@
 import copy
 
 
+class UnrecognizedOptionError(Exception):
+    pass
+
+
 class Bot:
     """Base class for bridge bots."""
     def __init__(self, metadata):
@@ -16,3 +20,6 @@ class Bot:
 
     def identify(self):
         return self.name()
+
+    def set_option(self, key, value):
+        raise UnrecognizedOptionError(key)

@@ -3,7 +3,7 @@ import random
 from .. import cards
 from ..bots import load_bot
 from ..game import GameState
-from ..io import GamePrinter
+from ..io import GamePrinter, parse_options
 from ..players import Player
 from ..scoring import score_hand
 from .command import Command
@@ -11,12 +11,19 @@ from .command import Command
 
 class DemoGame(Command):
     def register_arguments(self, parser):
+        parser.add_argument('--options')
         parser.add_argument('northsouth_bot')
         parser.add_argument('eastwest_bot')
 
     def run(self, args):
+        opts = {}
+        if args.options:
+            opts = parse_options(args.options)
         ns_bot = load_bot(args.northsouth_bot)
         ew_bot = load_bot(args.eastwest_bot)
+        for key, value in opts.items():
+            ns_bot.set_option(key, value)
+            ew_bot.set_option(key, value)
         agents = {
             Player.north: ns_bot,
             Player.east: ew_bot,

@@ -1,19 +1,17 @@
 import numpy as np
+from keras.optimizers import SGD
 
 from ...game import Action, Phase
 from ...players import Player
 from ...rl import Decision, Episode, concat_episodes
-from ..base import Bot
+from ..base import Bot, UnrecognizedOptionError
 from .encoder import Encoder
+from .limits import MAX_GAME
+from .losses import policy_loss
 
 __all__ = [
     'LSTMBot',
 ]
-
-
-# The longest possible auction has 319 calls. But that is very
-# unrealistic. Here we impose an arbitrary cap of 60 calls.
-MAX_GAME = 1 + 60 + 52
 
 
 def sample(p, temperature):
@@ -84,11 +82,21 @@ class LSTMBot(Bot):
         self.model = model
         self.temperature = 1.0
 
+        self._max_contract = 7
+
     def identify(self):
         return '{}_{:07d}'.format(
             self.name(),
             self.metadata.get('num_games', 0)
         )
+
+    def set_option(self, key, value):
+        if key == 'max_contract':
+            self._max_contract = int(value)
+        elif key == 'temperature':
+            self.temperature = float(value)
+        else:
+            raise UnrecognizedOptionError(key)
 
     def add_games(self, num_games):
         if 'num_games' not in self.metadata:
@@ -110,6 +118,8 @@ class LSTMBot(Bot):
             call_p = calls.reshape((-1,))[1:]
             for call_index in sample(call_p, self.temperature):
                 call = self.encoder.decode_call_index(call_index)
+                if call.is_bid and call.bid.tricks > self._max_contract:
+                    continue
                 if state.auction.is_legal(call):
                     chosen_call = call
                     break
@@ -197,10 +207,28 @@ class LSTMBot(Bot):
                 plays[i] = self.encoder.encode_play_action(None)
         return states, calls, plays, values
 
-    def pretrain(self, x_state, y_call, y_play, y_value):
-        self.model.fit(x_state, [y_call, y_play, y_value])
+    def pretrain(self, x_state, y_call, y_play, y_value, callback=None):
+        self.model.fit(
+            x_state,
+            [y_call, y_play, y_value],
+            verbose=0,
+            callbacks=[callback]
+        )
 
     def train(self, episodes):
+        self.model.compile(
+            optimizer=SGD(lr=0.05, clipnorm=1.0),
+            loss=[
+                policy_loss,
+                policy_loss,
+                'mse'
+            ],
+            loss_weights=[
+                1.0,
+                1.0,
+                0.05,
+            ]
+        )
         x_state, y_call, y_play, y_value = prepare_training_data(episodes)
         history = self.model.fit(
             x_state,

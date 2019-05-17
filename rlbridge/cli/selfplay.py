@@ -38,7 +38,7 @@ def train_and_evaluate(
     worker.run()
 
 
-def do_selfplay(q, logger, ref_fname):
+def do_selfplay(q, logger, ref_fname, max_contract):
     logger.log('Running in PID {}'.format(os.getpid()))
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
@@ -55,6 +55,8 @@ def do_selfplay(q, logger, ref_fname):
                 cur_bot = ref_path
                 bot = bots.load_bot(ref_path)
                 logger.log('Starting self-play with {}'.format(bot.identify()))
+                logger.log('Setting max contract to {}'.format(max_contract))
+                bot.set_option('max_contract', max_contract)
                 bot.temperature = 1.5
                 num_games = 0
             recorder = ExperienceRecorder()
@@ -104,6 +106,7 @@ class SelfPlay(Command):
             '--max-games', type=int, default=10000,
             help='Restart the trainer process after this many games.'
         )
+        parser.add_argument('--max-contract', type=int, default=7)
         parser.add_argument('--gate', dest='gate', action='store_true')
         parser.add_argument('--no-gate', dest='gate', action='store_false')
         parser.set_defaults(gate=True)
@@ -128,7 +131,7 @@ class SelfPlay(Command):
         logger_proc.start()
         play_proc = Process(
             target=do_selfplay,
-            args=(q, QLogger(log_q, 'selfplay'), ref_fname)
+            args=(q, QLogger(log_q, 'selfplay'), ref_fname, args.max_contract)
         )
         play_proc.start()
         try:
