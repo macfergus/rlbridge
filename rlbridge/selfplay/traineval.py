@@ -104,6 +104,9 @@ class TrainEvalLoop:
 
     def evaluate_bot(self):
         ref_bot = self.load_ref_bot()
+        # For evaluation, make both bots choose their strongest actions.
+        ref_bot.set_option('temperature', 0.0)
+        self.training_bot.set_option('temperature', 0.0)
         num_games = 0
         lower_p = self._eval_threshold
         upper_p = 1 - self._eval_threshold

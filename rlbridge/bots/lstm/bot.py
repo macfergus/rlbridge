@@ -217,7 +217,7 @@ class LSTMBot(Bot):
 
     def train(self, episodes):
         self.model.compile(
-            optimizer=SGD(lr=0.05, clipnorm=1.0),
+            optimizer=SGD(lr=0.03, clipnorm=0.8),
             loss=[
                 policy_loss,
                 policy_loss,
