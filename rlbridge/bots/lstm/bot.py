@@ -1,6 +1,7 @@
 import numpy as np
 from keras.optimizers import SGD
 
+from ...io import format_hand
 from ...game import Action, Phase
 from ...players import Player
 from ...rl import Decision, Episode, concat_episodes
@@ -84,6 +85,11 @@ class LSTMBot(Bot):
 
         self._max_contract = 7
 
+        self._last_state = None
+        self._last_value = None
+        self._last_call_prob = None
+        self._last_play_prob = None
+
     def identify(self):
         return '{}_{:07d}'.format(
             self.name(),
@@ -104,6 +110,7 @@ class LSTMBot(Bot):
         self.metadata['num_games'] += num_games
 
     def select_action(self, state, recorder=None):
+        self._last_state = state
         game_record = self.encoder.encode_full_game(state, state.next_player)
         n = game_record.shape[0]
         if n > MAX_GAME:
@@ -112,10 +119,13 @@ class LSTMBot(Bot):
         states = np.zeros((1, MAX_GAME, self.encoder.DIM))
         states[0, MAX_GAME - n:] = game_record
         calls, plays, values = self.model.predict(states)
+        self._last_value = values[0][0]
         chosen_call = None
         chosen_play = None
         if state.phase == Phase.auction:
             call_p = calls.reshape((-1,))[1:]
+            self._last_call_prob = call_p
+            self._last_play_prob = None
             for call_index in sample(call_p, self.temperature):
                 call = self.encoder.decode_call_index(call_index)
                 if call.is_bid and call.bid.tricks > self._max_contract:
@@ -126,6 +136,8 @@ class LSTMBot(Bot):
         else:
             # play
             play_p = plays.reshape((-1,))[1:]
+            self._last_call_prob = None
+            self._last_play_prob = play_p
             for play_index in sample(play_p, self.temperature):
                 play = self.encoder.decode_play_index(play_index)
                 if state.playstate.is_legal(play):
@@ -241,3 +253,35 @@ class LSTMBot(Bot):
             'play_loss': history.history['dense_2_loss'][0],
             'value_loss': history.history['dense_3_loss'][0],
         }
+
+    def get_diagnostics(self):
+        diagnostics = {}
+        if self._last_value is not None:
+            diagnostics['value'] = '{:.3f}'.format(
+                500.0 * self._last_value
+            )
+        if self._last_state is not None:
+            state = self._last_state
+            cards = state.visible_cards(state.next_decider)
+            for player, hand in cards.items():
+                fmt_hand = ' '.join(format_hand(hand))
+                key = 'holding_{}'.format(player)
+                diagnostics[key] = fmt_hand
+        if self._last_call_prob is not None:
+            ps = []
+            for i, p in enumerate(self._last_call_prob):
+                ps.append('{}: {:.3f}'.format(
+                    self.encoder.decode_call_index(i),
+                    p
+                ))
+            diagnostics['call_p'] = ' '.join(ps)
+        if self._last_play_prob is not None:
+            ps = []
+            for i, p in enumerate(self._last_play_prob):
+                ps.append('{}: {:.3f}'.format(
+                    self.encoder.decode_play_index(i),
+                    p
+                ))
+            diagnostics['play_p'] = ' '.join(ps)
+
+        return diagnostics

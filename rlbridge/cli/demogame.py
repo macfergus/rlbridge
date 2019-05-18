@@ -11,6 +11,7 @@ from .command import Command
 
 class DemoGame(Command):
     def register_arguments(self, parser):
+        parser.add_argument('--diagnostics', action='store_true')
         parser.add_argument('--options')
         parser.add_argument('northsouth_bot')
         parser.add_argument('eastwest_bot')
@@ -46,6 +47,13 @@ class DemoGame(Command):
             next_decider = hand.next_decider
             agent = agents[next_decider]
             action = agent.select_action(hand)
+            if args.diagnostics:
+                diagnostics = agent.get_diagnostics()
+                print('Player: {}'.format(next_decider))
+                for key, value in diagnostics.items():
+                    print(' * {}: {}'.format(key, value))
+                print('Chose: {}'.format(action))
+                print()
             hand = hand.apply(action)
         p.show_game(hand)
         result = score_hand(hand)

@@ -6,6 +6,7 @@ from ..players import Player
 
 __all__ = [
     'GamePrinter',
+    'format_hand',
 ]
 
 

@@ -23,3 +23,7 @@ class Bot:
 
     def set_option(self, key, value):
         raise UnrecognizedOptionError(key)
+
+    def get_diagnostics(self):
+        """Return a dictionary explaining the last decision."""
+        return {}
