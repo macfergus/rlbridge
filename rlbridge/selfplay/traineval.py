@@ -42,7 +42,7 @@ class TrainEvalLoop:
         self.should_continue = True
         self.total_games = 0
 
-        self._gate = False
+        self._gate = gate
         self._max_games = max_games
         self._episodes_per_train = episodes_per_train
         self._eval_games = eval_games
