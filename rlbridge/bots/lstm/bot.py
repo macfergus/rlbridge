@@ -229,7 +229,7 @@ class LSTMBot(Bot):
 
     def train(self, episodes):
         self.model.compile(
-            optimizer=SGD(lr=0.03, clipnorm=0.8),
+            optimizer=SGD(lr=0.02, clipnorm=0.5),
             loss=[
                 policy_loss,
                 policy_loss,
@@ -238,7 +238,7 @@ class LSTMBot(Bot):
             loss_weights=[
                 1.0,
                 1.0,
-                0.05,
+                0.2,
             ]
         )
         x_state, y_call, y_play, y_value = prepare_training_data(episodes)

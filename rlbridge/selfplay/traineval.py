@@ -27,7 +27,7 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
 
 class TrainEvalLoop:
     def __init__(
-            self, episode_q, ref_fname, out_dir, logger,
+            self, episode_q, ref_fname, learn_fname, out_dir, logger,
             gate=True,
             max_games=10000,
             episodes_per_train=200,
@@ -35,7 +35,8 @@ class TrainEvalLoop:
             eval_chunk=20,
             eval_threshold=0.05):
         self.episode_q = episode_q
-        self.ref_fname = ref_fname
+        self._ref_fname = ref_fname
+        self._learn_fname = learn_fname
         self.out_dir = out_dir
         self.logger = logger
         self.episode_buffer = []
@@ -49,7 +50,7 @@ class TrainEvalLoop:
         self._eval_chunk = eval_chunk
         self._eval_threshold = eval_threshold
 
-        self.training_bot = self.load_ref_bot()
+        self.training_bot = self.load_learn_bot()
 
     def run(self):
         while self.should_continue:
@@ -75,8 +76,9 @@ class TrainEvalLoop:
             if self._gate:
                 self.logger.log('Evaluating...')
                 promote = self.evaluate_bot()
+            self.update_learn_bot()
             if promote:
-                self.promote()
+                self.promote(out_fname)
             if self.total_games >= self._max_games:
                 # Shut the process down to free up memory.
                 self.logger.log('Shutting down after {} games'.format(
@@ -145,14 +147,25 @@ class TrainEvalLoop:
     def promote(self):
         out_fname = os.path.join(self.out_dir, self.training_bot.identify())
         out_fname = out_fname.replace(' ', '_')
-        self.logger.log('Saving as {} and promoting'.format(out_fname))
+        self.logger.log('Saving as {}'.format(out_fname))
         bots.save_bot(self.training_bot, out_fname)
-
-        tmp_path = self.ref_fname + '.tmp'
+        self.logger.log('Promoting {}'.format(out_fname))
+        tmp_path = self._ref_fname + '.tmp'
         with open(tmp_path, 'w') as ref_outf:
             ref_outf.write(out_fname)
-        os.rename(tmp_path, self.ref_fname)
+        os.rename(tmp_path, self._ref_fname)
+
+    def update_learn_bot(self):
+        self.logger.log('Update learner')
+        out_fname = os.path.join(self.out_dir, 'learner')
+        tmp_fname = out_fname + '.tmp'
+        bots.save_bot(self.training_bot, tmp_fname)
+        os.rename(tmp_fname, out_fname)
 
     def load_ref_bot(self):
-        ref_path = open(self.ref_fname).read().strip()
+        ref_path = open(self._ref_fname).read().strip()
         return bots.load_bot(ref_path)
+
+    def load_learn_bot(self):
+        learn_path = open(self._learn_fname).read().strip()
+        return bots.load_bot(learn_path)

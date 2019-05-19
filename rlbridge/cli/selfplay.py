@@ -1,5 +1,6 @@
 import datetime
 import os
+import random
 from multiprocessing import Process, Queue
 
 from .command import Command
@@ -16,7 +17,7 @@ class QLogger:
 
 
 def train_and_evaluate(
-        q, ref_fname, out_dir,
+        q, ref_fname, learn_fname, out_dir,
         gate,
         max_games, episodes_per_train,
         eval_games, eval_chunk, eval_threshold,
@@ -27,7 +28,7 @@ def train_and_evaluate(
 
     from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(
-        q, ref_fname, out_dir, logger,
+        q, ref_fname, learn_fname, out_dir, logger,
         episodes_per_train=episodes_per_train,
         gate=gate,
         max_games=max_games,
@@ -38,7 +39,7 @@ def train_and_evaluate(
     worker.run()
 
 
-def do_selfplay(q, logger, ref_fname, max_contract):
+def do_selfplay(q, logger, bot_dir, max_contract):
     logger.log('Running in PID {}'.format(os.getpid()))
     from ..import kerasutil
     kerasutil.set_tf_options(gpu_frac=0.4)
@@ -47,47 +48,72 @@ def do_selfplay(q, logger, ref_fname, max_contract):
     from ..players import Player
     from ..rl import ExperienceRecorder
     from ..simulate import simulate_game
-    cur_bot = None
+
+    ref_fname = os.path.join(bot_dir, 'ref')
+    learn_fname = os.path.join(bot_dir, 'learn')
+
+    cur_ref_bot = None
+    cur_learn_bot = None
     try:
         while True:
             ref_path = open(ref_fname).read().strip()
-            if ref_path != cur_bot:
-                cur_bot = ref_path
-                bot = bots.load_bot(ref_path)
-                logger.log('Starting self-play with {}'.format(bot.identify()))
+            if ref_path != cur_ref_bot:
+                cur_ref_bot = ref_path
+                ref_bot = bots.load_bot(ref_path)
+                logger.log('Setting ref bot to {}'.format(ref_bot.identify()))
                 logger.log('Setting max contract to {}'.format(max_contract))
-                bot.set_option('max_contract', max_contract)
-                bot.temperature = 1.5
+                ref_bot.set_option('max_contract', max_contract)
+                ref_bot.temperature = 0
+
+            learn_path = open(learn_fname).read().strip()
+            if learn_path != cur_learn_bot:
+                cur_learn_bot = learn_path
+                learn_bot = bots.load_bot(learn_path)
+                logger.log('Setting learn bot to {}'.format(
+                    learn_bot.identify()
+                ))
+                logger.log('Setting max contract to {}'.format(max_contract))
+                learn_bot.set_option('max_contract', max_contract)
+                learn_bot.temperature = 1.5
                 num_games = 0
+
             recorder = ExperienceRecorder()
-            game_result = simulate_game(bot, bot, recorder)
+            learn_side = random.choice(['ns', 'ew'])
+            if learn_side == 'ns':
+                game_result = simulate_game(
+                    learn_bot, ref_bot, ns_recorder=recorder)
+            else:
+                game_result = simulate_game(
+                    ref_bot, learn_bot, ew_recorder=recorder)
             num_games += 1
             if num_games % 20 == 0:
                 logger.log('Completed {} games with {}'.format(
                     num_games,
-                    bot.identify()
+                    learn_bot.identify()
                 ))
-            # One game makes 4 episodes (from each player's perspective)
-            q.put(bot.encode_episode(
-                game_result,
-                Player.north,
-                recorder.get_decisions(Player.north)
-            ))
-            q.put(bot.encode_episode(
-                game_result,
-                Player.east,
-                recorder.get_decisions(Player.east)
-            ))
-            q.put(bot.encode_episode(
-                game_result,
-                Player.south,
-                recorder.get_decisions(Player.south)
-            ))
-            q.put(bot.encode_episode(
-                game_result,
-                Player.west,
-                recorder.get_decisions(Player.west)
-            ))
+            # One game makes 2 episodes (from each player's perspective)
+            if learn_side == 'ns':
+                q.put(learn_bot.encode_episode(
+                    game_result,
+                    Player.north,
+                    recorder.get_decisions(Player.north)
+                ))
+                q.put(learn_bot.encode_episode(
+                    game_result,
+                    Player.south,
+                    recorder.get_decisions(Player.south)
+                ))
+            if learn_side == 'ew':
+                q.put(learn_bot.encode_episode(
+                    game_result,
+                    Player.east,
+                    recorder.get_decisions(Player.east)
+                ))
+                q.put(learn_bot.encode_episode(
+                    game_result,
+                    Player.west,
+                    recorder.get_decisions(Player.west)
+                ))
     finally:
         q.put(None)
 
@@ -119,7 +145,10 @@ class SelfPlay(Command):
 
     def run(self, args):
         ref_fname = os.path.join(args.checkpoint_out, 'ref')
+        learn_fname = os.path.join(args.checkpoint_out, 'learn')
         with open(ref_fname, 'w') as outf:
+            outf.write(args.bot)
+        with open(learn_fname, 'w') as outf:
             outf.write(args.bot)
 
         q = Queue()
@@ -131,7 +160,12 @@ class SelfPlay(Command):
         logger_proc.start()
         play_proc = Process(
             target=do_selfplay,
-            args=(q, QLogger(log_q, 'selfplay'), ref_fname, args.max_contract)
+            args=(
+                q,
+                QLogger(log_q, 'selfplay'),
+                args.checkpoint_out,
+                args.max_contract
+            )
         )
         play_proc.start()
         try:
@@ -144,6 +178,7 @@ class SelfPlay(Command):
                     args=(
                         q,
                         ref_fname,
+                        learn_fname,
                         args.checkpoint_out,
                         args.gate,
                         args.max_games,
