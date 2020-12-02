@@ -17,7 +17,7 @@ class Accumulator:
     def append(self, value):
         self.history.append(value)
         self.history = self.history[-20:]
-    
+
     def avg(self):
         return sum(self.history) / len(self.history)
 

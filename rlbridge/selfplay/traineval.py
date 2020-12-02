@@ -76,9 +76,8 @@ class TrainEvalLoop:
             if self._gate:
                 self.logger.log('Evaluating...')
                 promote = self.evaluate_bot()
-            self.update_learn_bot()
             if promote:
-                self.promote(out_fname)
+                self.promote()
             if self.total_games >= self._max_games:
                 # Shut the process down to free up memory.
                 self.logger.log('Shutting down after {} games'.format(
@@ -158,9 +157,11 @@ class TrainEvalLoop:
     def update_learn_bot(self):
         self.logger.log('Update learner')
         out_fname = os.path.join(self.out_dir, 'learner')
-        tmp_fname = out_fname + '.tmp'
-        bots.save_bot(self.training_bot, tmp_fname)
-        os.rename(tmp_fname, out_fname)
+        bots.save_bot(self.training_bot, out_fname)
+        tmp_path = self._learn_fname + '.tmp'
+        with open(tmp_path, 'w') as learn_outf:
+            learn_outf.write(out_fname)
+        os.rename(tmp_path, self._learn_fname)
 
     def load_ref_bot(self):
         ref_path = open(self._ref_fname).read().strip()

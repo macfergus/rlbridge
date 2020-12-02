@@ -23,8 +23,11 @@ def train_and_evaluate(
         eval_games, eval_chunk, eval_threshold,
         logger):
     logger.log('Running in PID {}'.format(os.getpid()))
-    from ..import kerasutil
-    kerasutil.set_tf_options(gpu_frac=0.4)
+    import tensorflow as tf
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
 
     from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(
@@ -41,8 +44,8 @@ def train_and_evaluate(
 
 def do_selfplay(q, logger, bot_dir, max_contract):
     logger.log('Running in PID {}'.format(os.getpid()))
-    from ..import kerasutil
-    kerasutil.set_tf_options(gpu_frac=0.4)
+    #from ..import kerasutil
+    #kerasutil.set_tf_options(gpu_frac=0.4)
 
     from .. import bots
     from ..players import Player
@@ -64,16 +67,11 @@ def do_selfplay(q, logger, bot_dir, max_contract):
                 logger.log('Setting max contract to {}'.format(max_contract))
                 ref_bot.set_option('max_contract', max_contract)
                 ref_bot.temperature = 0
-
-            learn_path = open(learn_fname).read().strip()
-            if learn_path != cur_learn_bot:
-                cur_learn_bot = learn_path
-                learn_bot = bots.load_bot(learn_path)
+                learn_bot = bots.load_bot(ref_path)
                 logger.log('Setting learn bot to {}'.format(
                     learn_bot.identify()
                 ))
                 logger.log('Setting max contract to {}'.format(max_contract))
-                learn_bot.set_option('max_contract', max_contract)
                 learn_bot.temperature = 1.5
                 num_games = 0
 
