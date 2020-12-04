@@ -1,7 +1,12 @@
+from collections import namedtuple
+
 import numpy as np
 
 from ...cards import Card, Suit
 from ...game import Bid, Call, Denomination, Play
+
+
+PSA = namedtuple('PSA', 'player state action')
 
 
 def reverse_states(final_state):
@@ -15,17 +20,29 @@ def reverse_states(final_state):
     return states
 
 
+def unwind_states(final_state):
+    states = reverse_states(final_state)
+    unwound = []
+    for i, s in enumerate(states):
+        action = None
+        if i < len(states) - 1:
+            action = states[i + 1].prev_action
+        unwound.append(PSA(
+            player=s.next_player,
+            state=s,
+            action=action
+        ))
+    return unwound
+
+
 class Encoder:
     DIM_VISIBLE_CARDS = 4 * 53
     DIM_VULNERABILITY = 2
     DIM_AUCTION = 4 * 38
     DIM_PLAY = 4 * 52
-    DIM = (
-        DIM_VISIBLE_CARDS +
-        DIM_VULNERABILITY +
-        DIM_AUCTION +
-        DIM_PLAY
-    )
+    DIM_STATE = DIM_VISIBLE_CARDS + DIM_VULNERABILITY
+    DIM_ACTION = DIM_AUCTION + DIM_PLAY
+    DIM = DIM_STATE + DIM_ACTION
 
     # These include a "not my turn" sentinel
     DIM_CALL_ACTION = 39
@@ -43,8 +60,17 @@ class Encoder:
 
     def encode_full_game(self, state, perspective):
         sequence = np.zeros((self.GAME_LENGTH, self.DIM))
-        for i, s in enumerate(reverse_states(state)):
-            sequence[i] = self.encode_game_state(s, perspective)
+        state_start = 0
+        dim_state = self.AUCTION_START
+        action_start = self.AUCTION_START
+        dim_action = self.DIM_AUCTION + self.DIM_PLAY
+        for i, psa in enumerate(unwind_states(state)):
+            sequence[i, state_start:state_start + dim_state] = (
+                self.encode_game_state(psa.state, perspective)
+            )
+            sequence[i, action_start:action_start + dim_action] = (
+                self.encode_action(psa.action, psa.player, perspective)
+            )
         return sequence
 
     def encode_card(self, card):
@@ -127,7 +153,7 @@ class Encoder:
         return action
 
     def encode_game_state(self, state, perspective):
-        s = np.zeros(self.DIM)
+        s = np.zeros(self.DIM_STATE)
         players = [
             perspective,
             perspective.lho(),
@@ -158,18 +184,26 @@ class Encoder:
             s[self.DIM_VULNERABILITY] = 1
         if state.is_vulnerable(opposite_side):
             s[self.DIM_VULNERABILITY + 1] = 1
+        return s
 
-        # Fill in last action
-        if state.prev_action is None:
+    def encode_action(self, action, who_did_it, perspective):
+        s = np.zeros(self.DIM_ACTION)
+        if action is None:
             return s
-        last_actor = state.next_player.rho()
-        offset = player_offset[last_actor]
-        if state.prev_action.is_call:
-            start_index = self.AUCTION_START + 38 * offset
-            call_index = self.encode_call(state.prev_action.call)
+        players = [
+            perspective,
+            perspective.lho(),
+            perspective.partner,
+            perspective.rho()
+        ]
+        player_offset = {player: i for i, player in enumerate(players)}
+        offset = player_offset[who_did_it]
+        if action.is_call:
+            start_index = 38 * offset
+            call_index = self.encode_call(action.call)
             s[start_index + call_index] = 1
-        if state.prev_action.is_play:
-            start_index = self.PLAY_START + 52 * offset
+        if action.is_play:
+            start_index = self.DIM_AUCTION + 52 * offset
             card_index = self.encode_card(state.prev_action.play.card)
             s[start_index + card_index] = 1
         return s
