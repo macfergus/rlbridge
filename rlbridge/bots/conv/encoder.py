@@ -204,7 +204,7 @@ class Encoder:
             s[start_index + call_index] = 1
         if action.is_play:
             start_index = self.DIM_AUCTION + 52 * offset
-            card_index = self.encode_card(state.prev_action.play.card)
+            card_index = self.encode_card(action.play.card)
             s[start_index + card_index] = 1
         return s
 

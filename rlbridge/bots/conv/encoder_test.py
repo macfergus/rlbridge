@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from ...cards import Card, Deal
-from ...game import Call, GameState
+from ...game import Call, GameState, Play
 from ...players import Player
 from .encoder import Encoder
 
@@ -37,9 +37,20 @@ EXAMPLE_DEAL = Deal.from_dict({
 
 
 # helpers for extracting parts of a state representation
-def visible_cards(row):
+def visible_cards(row, player=None):
     card_start = Encoder.VISIBLE_CARD_START
-    return row[card_start:card_start + 4 * 53]
+    per_player = 53
+    all_cards = row[card_start:card_start + 4 * per_player]
+    if player == 'self':
+        return all_cards[:per_player]
+    if player == 'lho':
+        return all_cards[per_player:2 * per_player]
+    if player == 'partner':
+        return all_cards[2 * per_player:3 * per_player]
+    if player == 'rho':
+        return all_cards[3 * per_player:]
+    assert player is None
+    return all_cards
 
 
 def call_action(row):
@@ -50,6 +61,10 @@ def call_action(row):
 def play_action(row):
     start_idx = Encoder.PLAY_START
     return row[start_idx:start_idx + Encoder.DIM_PLAY]
+
+
+def are_hidden(array):
+    return array[0] == 1 and (not np.any(array[1:]))
 
 
 class ConvEncoderTest(unittest.TestCase):
@@ -102,3 +117,42 @@ class ConvEncoderTest(unittest.TestCase):
         # Rest of game: hasn't happened yet
         rest = encoded[2:]
         self.assertFalse(np.any(rest))
+
+    def test_card_play(self):
+        state = (
+            GameState.new_deal(EXAMPLE_DEAL, Player.north, False, False)
+            .apply_call(Call.of('1H'))
+            .apply_call(Call.of('pass'))
+            .apply_call(Call.of('pass'))
+            .apply_call(Call.of('pass'))
+            .apply_play(Play.of('10D'))
+        )
+
+        # Array should have XX filled rows:
+        # 0 - N bids 1H
+        # 1 - E passes
+        # 2 - S passes
+        # 3 - W passes
+        # 4 - E opens 10D
+        # 5 - dummy exposed, N chooses
+        encoded = self.encoder.encode_full_game(state, Player.north)
+        auction_1 = encoded[0]
+        auction_2 = encoded[1]
+        auction_3 = encoded[2]
+        auction_4 = encoded[3]
+        play_1 = encoded[4]
+        play_2 = encoded[5]
+        rest = encoded[6:]
+        self.assertFalse(np.any(rest))
+
+        # Opening: dummy is not visible yet
+        self.assertTrue(are_hidden(visible_cards(play_1, 'lho')))
+        self.assertTrue(are_hidden(visible_cards(play_1, 'rho')))
+        self.assertTrue(are_hidden(visible_cards(play_1, 'partner')))
+        self.assertFalse(are_hidden(visible_cards(play_1, 'self')))
+
+        # After opening: dummy is visible
+        self.assertTrue(are_hidden(visible_cards(play_2, 'lho')))
+        self.assertTrue(are_hidden(visible_cards(play_2, 'rho')))
+        self.assertFalse(are_hidden(visible_cards(play_2, 'partner')))
+        self.assertFalse(are_hidden(visible_cards(play_2, 'self')))
