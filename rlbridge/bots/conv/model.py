@@ -29,16 +29,20 @@ def construct_model(
     # 37 -> redouble
     # 38 -> pass
     call_hidden = Dense(hidden_size, activation='relu')(game_state)
-    call_output = Dense(39, activation='softmax')(call_hidden)
+    call_output = Dense(
+        39, activation='softmax', name='call_output'
+    )(call_hidden)
 
     # Play output (53,)
     # 0 -> not my turn
     # 1..52 -> 2C .. AS
     play_hidden = Dense(hidden_size, activation='relu')(game_state)
-    play_output = Dense(53, activation='softmax')(play_hidden)
+    play_output = Dense(
+        53, activation='softmax', name='play_output'
+    )(play_hidden)
 
     value_hidden = Dense(hidden_size, activation='relu')(game_state)
-    value_output = Dense(1)(value_hidden)
+    value_output = Dense(1, name='value_output')(value_hidden)
 
     model = Model(
         inputs=[
@@ -53,8 +57,8 @@ def construct_model(
     model.compile(
         optimizer=Adam(clipnorm=0.5),
         loss=[
-            policy_loss,
-            policy_loss,
+            'categorical_crossentropy',
+            'categorical_crossentropy',
             'mse'
         ],
         loss_weights=[

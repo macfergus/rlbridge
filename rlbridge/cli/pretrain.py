@@ -39,9 +39,9 @@ class TQDMCallback(Callback):
                 self.pbar.total = self.n_examples // logs['size']
                 self._set_total = True
         self.pbar.update()
-        self.call_loss.append(logs.get('dense_1_loss', 0))
-        self.play_loss.append(logs.get('dense_2_loss', 0))
-        self.value_loss.append(logs.get('dense_3_loss', 0))
+        self.call_loss.append(logs.get('call_output_loss', 0))
+        self.play_loss.append(logs.get('play_output_loss', 0))
+        self.value_loss.append(logs.get('value_output_loss', 0))
         self.pbar.set_postfix(
             call=self.call_loss.avg(),
             play=self.play_loss.avg(),
