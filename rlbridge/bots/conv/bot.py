@@ -182,10 +182,11 @@ class ConvBot(Bot):
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
         values = np.zeros(n)
-        for i, (state, _) in enumerate(replay_game(game)):
-            seq_len = i + 1
-            states[i, :seq_len] = full_state[:seq_len]
+        i = 0
+        for state, _ in replay_game(game):
             if state.next_decider == perspective:
+                states[i] = self.encoder.encode_full_game(state, perspective)
+                values[i] = reward
                 if state.phase == Phase.auction:
                     calls[i] = self.encoder.encode_legal_calls(state)
                     calls[i] /= np.sum(calls[i])
@@ -194,12 +195,17 @@ class ConvBot(Bot):
                     plays[i] = self.encoder.encode_legal_plays(state)
                     plays[i] /= np.sum(plays[i])
                     calls[i] = self.encoder.encode_call_action(None)
-            else:
-                # This turn belongs to a different player.
-                calls[i] = self.encoder.encode_call_action(None)
-                plays[i] = self.encoder.encode_play_action(None)
-        values[-1] = reward
-        return states, calls, plays, values
+                i += 1
+        # Discount the rewards
+        values = values[:i].copy()
+        seq = i - np.arange(i)
+        values = values * (1. / seq)
+        return (
+            states[:i].copy(),
+            calls[:i].copy(),
+            plays[:i].copy(),
+            values
+        )
 
     def pretrain(self, x_state, y_call, y_play, y_value, callback=None):
         self.model.fit(
