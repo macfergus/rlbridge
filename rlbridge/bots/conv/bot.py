@@ -208,7 +208,7 @@ class ConvBot(Bot):
         )
 
     def pretrain(self, x_state, y_call, y_play, y_value, callback=None):
-        self.model.fit(
+        return self.model.fit(
             x_state,
             [y_call, y_play, y_value],
             verbose=0,
