@@ -1,5 +1,5 @@
 from keras import Model
-from keras.layers import Conv1D, Dense, Flatten, Input
+from keras.layers import BatchNormalization, Conv1D, Dense, Flatten, Input
 from keras.optimizers import Adam
 
 from .losses import policy_loss
@@ -18,6 +18,7 @@ def construct_model(
     y = game_input
     for i in range(num_layers):
         y = Conv1D(num_filters, kernel_size, activation='relu')(y)
+        y = BatchNormalization()(y)
 
     game_state = Dense(state_size, activation='relu')(Flatten()(y))
 
