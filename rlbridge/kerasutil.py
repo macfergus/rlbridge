@@ -37,15 +37,12 @@ def load_model_from_hdf5_group(inf, custom_objects=None):
         os.unlink(tempfname)
 
 
-def set_tf_options(gpu_frac=None):
+def set_tf_options(limit_memory=False):
     """Set Tensorflow options."""
-    if keras.backend.backend() != 'tensorflow':
-        return
-    # Do the import here, not at the top, in case Tensorflow is not
-    # installed at all.
+    # Do the import here, not at the top, for funny forking reasons
     import tensorflow as tf
-    from keras.backend.tensorflow_backend import set_session
-    config = tf.ConfigProto()
-    if gpu_frac is not None:
-        config.gpu_options.per_process_gpu_memory_fraction = gpu_frac
-    set_session(tf.Session(config=config))
+    if limit_memory:
+        gpus = tf.config.experimental.list_physical_devices('GPU')
+        if gpus:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)

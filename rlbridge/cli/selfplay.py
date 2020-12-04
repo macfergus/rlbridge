@@ -1,7 +1,11 @@
+import copy
 import datetime
+import json
 import os
 import random
 from multiprocessing import Process, Queue
+
+import numpy as np
 
 from .command import Command
 
@@ -17,22 +21,21 @@ class QLogger:
 
 
 def train_and_evaluate(
-        q, ref_fname, learn_fname, out_dir,
+        q, pool_fname, out_dir,
         gate,
         max_games, episodes_per_train,
+        max_contract,
         eval_games, eval_chunk, eval_threshold,
         logger):
     logger.log('Running in PID {}'.format(os.getpid()))
-    import tensorflow as tf
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
+    from .. import kerasutil
+    kerasutil.set_tf_options(limit_memory=True)
 
     from ..selfplay import TrainEvalLoop
     worker = TrainEvalLoop(
-        q, ref_fname, learn_fname, out_dir, logger,
+        q, pool_fname, out_dir, logger,
         episodes_per_train=episodes_per_train,
+        max_contract=max_contract,
         gate=gate,
         max_games=max_games,
         eval_games=eval_games,
@@ -42,38 +45,78 @@ def train_and_evaluate(
     worker.run()
 
 
+class BotPool:
+    def __init__(self, fname, logger):
+        self._fname = fname
+        self._ref_bot_names = None
+        self._learn_bot_name = None
+        self.logger = logger
+
+    def refresh(self):
+        from .. import bots
+        new_learner = False
+        data = json.load(open(self._fname))
+        if self._ref_bot_names != data['ref']:
+            self.logger.log('Updating reference bot pool')
+            self._ref_bot_names = copy.copy(data['ref'])
+            self._ref_bots = []
+            self._ref_weights = []
+            for i, bot_file in enumerate(self._ref_bot_names):
+                ref_bot = bots.load_bot(bot_file)
+                self._ref_bots.append(ref_bot)
+                self._ref_weights.append(i + 1)
+                self.logger.log('=> Loaded {} with weight {}'.format(
+                    ref_bot.identify(),
+                    i + 1
+                ))
+            self._ref_weights = (
+                np.array(self._ref_weights) / np.sum(self._ref_weights)
+            )
+        if self._learn_bot_name != data['learn']:
+            new_learner = True
+            self.logger.log('Updating learn bot')
+            self._learn_bot_name = copy.copy(data['learn'])
+            self._learn_bot = bots.load_bot(self._learn_bot_name)
+            self.logger.log('=> Loaded {} as new learner'.format(
+                self._learn_bot.identify()
+            ))
+        return new_learner
+
+    def select_ref_bot(self):
+        bot_idx = np.random.choice(len(self._ref_bots), p=self._ref_weights)
+        return self._ref_bots[bot_idx]
+
+    def get_learn_bot(self):
+        return self._learn_bot
+
+
 def do_selfplay(q, logger, bot_dir, max_contract):
     logger.log('Running in PID {}'.format(os.getpid()))
-    #from ..import kerasutil
-    #kerasutil.set_tf_options(gpu_frac=0.4)
+    from ..import kerasutil
+    kerasutil.set_tf_options(limit_memory=True)
 
     from .. import bots
     from ..players import Player
     from ..rl import ExperienceRecorder
     from ..simulate import simulate_game
 
-    ref_fname = os.path.join(bot_dir, 'ref')
-    learn_fname = os.path.join(bot_dir, 'learn')
+    pool_fname = os.path.join(bot_dir, 'bot_status')
 
-    cur_ref_bot = None
-    cur_learn_bot = None
+    bot_pool = BotPool(pool_fname, logger)
+    num_games = 0
+
     try:
         while True:
-            ref_path = open(ref_fname).read().strip()
-            if ref_path != cur_ref_bot:
-                cur_ref_bot = ref_path
-                ref_bot = bots.load_bot(ref_path)
-                logger.log('Setting ref bot to {}'.format(ref_bot.identify()))
-                logger.log('Setting max contract to {}'.format(max_contract))
-                ref_bot.set_option('max_contract', max_contract)
-                ref_bot.temperature = 0
-                learn_bot = bots.load_bot(ref_path)
-                logger.log('Setting learn bot to {}'.format(
-                    learn_bot.identify()
-                ))
-                logger.log('Setting max contract to {}'.format(max_contract))
-                learn_bot.temperature = 1.5
+            if bot_pool.refresh():
                 num_games = 0
+
+            learn_bot = bot_pool.get_learn_bot()
+            ref_bot = bot_pool.select_ref_bot()
+
+            ref_bot.set_option('max_contract', max_contract)
+            ref_bot.temperature = 0
+            learn_bot.set_option('max_contract', max_contract)
+            learn_bot.temperature = 1.5
 
             recorder = ExperienceRecorder()
             learn_side = random.choice(['ns', 'ew'])
@@ -142,12 +185,13 @@ class SelfPlay(Command):
         parser.add_argument('checkpoint_out')
 
     def run(self, args):
-        ref_fname = os.path.join(args.checkpoint_out, 'ref')
-        learn_fname = os.path.join(args.checkpoint_out, 'learn')
-        with open(ref_fname, 'w') as outf:
-            outf.write(args.bot)
-        with open(learn_fname, 'w') as outf:
-            outf.write(args.bot)
+        pool_fname = os.path.join(args.checkpoint_out, 'bot_status')
+        if not os.path.exists(pool_fname):
+            with open(pool_fname, 'w') as outf:
+                outf.write(json.dumps({
+                    'ref': [args.bot],
+                    'learn': args.bot,
+                }))
 
         q = Queue()
         log_q = Queue()
@@ -175,12 +219,12 @@ class SelfPlay(Command):
                     target=train_and_evaluate,
                     args=(
                         q,
-                        ref_fname,
-                        learn_fname,
+                        pool_fname,
                         args.checkpoint_out,
                         args.gate,
                         args.max_games,
                         args.episodes_per_train,
+                        args.max_contract,
                         args.eval_games,
                         args.eval_chunk,
                         args.eval_threshold,

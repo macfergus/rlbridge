@@ -1,3 +1,5 @@
+import copy
+import json
 import os
 import queue
 import random
@@ -25,32 +27,77 @@ def estimate_ci(values, min_pct, max_pct, n_bootstrap=1000):
     return lower, upper
 
 
+class WriteableBotPool:
+    def __init__(self, pool_fname, out_dir, logger):
+        self.pool_fname = pool_fname
+        self.out_dir = out_dir
+        init = json.load(open(pool_fname))
+        self.ref_fnames = copy.copy(init['ref'])
+        self.learn_fname = copy.copy(init['learn'])
+
+        self.learn_bot = bots.load_bot(self.learn_fname)
+        self.gating_bot = bots.load_bot(self.ref_fnames[-1])
+
+        self.logger = logger
+
+    def get_learn_bot(self):
+        return self.learn_bot
+
+    def get_gating_bot(self):
+        return self.gating_bot
+
+    def _save_bot(self, bot):
+        out_fname = os.path.join(self.out_dir, bot.identify())
+        out_fname = out_fname.replace(' ', '_')
+        bots.save_bot(bot, out_fname)
+        return out_fname
+
+    def promote(self, new_best_bot):
+        new_bot_fname = self._save_bot(new_best_bot)
+        # Keep the last 5 promoted bots
+        self.ref_fnames.append(new_bot_fname)
+        self.ref_fnames = self.ref_fnames[:5]
+        self.logger.log(f'Ref bots are: {self.ref_fnames}')
+        self.learn_fname = new_bot_fname
+
+        # After promotion, this is the new gating bot.
+        self.gating_bot = bots.load_bot(self.learn_fname)
+
+        tmpfname = self.pool_fname + '.tmp'
+        with open(tmpfname, 'w') as outf:
+            outf.write(json.dumps({
+                'ref': self.ref_fnames,
+                'learn': self.learn_fname,
+            }))
+        os.rename(tmpfname, self.pool_fname)
+
+
 class TrainEvalLoop:
     def __init__(
-            self, episode_q, ref_fname, learn_fname, out_dir, logger,
+            self, episode_q, pool_fname, out_dir, logger,
             gate=True,
+            max_contract=7,
             max_games=10000,
             episodes_per_train=200,
             eval_games=200,
             eval_chunk=20,
             eval_threshold=0.05):
         self.episode_q = episode_q
-        self._ref_fname = ref_fname
-        self._learn_fname = learn_fname
-        self.out_dir = out_dir
+        self.bot_pool = WriteableBotPool(pool_fname, out_dir, logger)
         self.logger = logger
         self.episode_buffer = []
         self.should_continue = True
         self.total_games = 0
 
         self._gate = gate
+        self._max_contract = max_contract
         self._max_games = max_games
         self._episodes_per_train = episodes_per_train
         self._eval_games = eval_games
         self._eval_chunk = eval_chunk
         self._eval_threshold = eval_threshold
 
-        self.training_bot = self.load_learn_bot()
+        self.training_bot = self.bot_pool.get_learn_bot()
 
     def run(self):
         while self.should_continue:
@@ -72,12 +119,12 @@ class TrainEvalLoop:
             self.total_games += len(work)
             work = []
 
-            promote = True
+            should_promote = True
             if self._gate:
-                self.logger.log('Evaluating...')
-                promote = self.evaluate_bot()
-            if promote:
-                self.promote()
+                should_promote = self.evaluate_bot()
+            if should_promote:
+                self.logger.log('Promoting!')
+                self.bot_pool.promote(self.training_bot)
             if self.total_games >= self._max_games:
                 # Shut the process down to free up memory.
                 self.logger.log('Shutting down after {} games'.format(
@@ -104,10 +151,17 @@ class TrainEvalLoop:
             self.episode_buffer.append(episode)
 
     def evaluate_bot(self):
-        ref_bot = self.load_ref_bot()
+        ref_bot = self.bot_pool.get_gating_bot()
+        self.logger.log(
+            f'Evaluating {self.training_bot.identify()} '
+            f'against {ref_bot.identify()}'
+        )
         # For evaluation, make both bots choose their strongest actions.
         ref_bot.set_option('temperature', 0.0)
+        ref_bot.set_option('max_contract', self._max_contract)
         self.training_bot.set_option('temperature', 0.0)
+        self.training_bot.set_option('max_contract', self._max_contract)
+
         num_games = 0
         lower_p = self._eval_threshold
         upper_p = 1 - self._eval_threshold
@@ -141,32 +195,4 @@ class TrainEvalLoop:
                 mean,
                 num_games,
                 lower, upper))
-        return lower > 0
-
-    def promote(self):
-        out_fname = os.path.join(self.out_dir, self.training_bot.identify())
-        out_fname = out_fname.replace(' ', '_')
-        self.logger.log('Saving as {}'.format(out_fname))
-        bots.save_bot(self.training_bot, out_fname)
-        self.logger.log('Promoting {}'.format(out_fname))
-        tmp_path = self._ref_fname + '.tmp'
-        with open(tmp_path, 'w') as ref_outf:
-            ref_outf.write(out_fname)
-        os.rename(tmp_path, self._ref_fname)
-
-    def update_learn_bot(self):
-        self.logger.log('Update learner')
-        out_fname = os.path.join(self.out_dir, 'learner')
-        bots.save_bot(self.training_bot, out_fname)
-        tmp_path = self._learn_fname + '.tmp'
-        with open(tmp_path, 'w') as learn_outf:
-            learn_outf.write(out_fname)
-        os.rename(tmp_path, self._learn_fname)
-
-    def load_ref_bot(self):
-        ref_path = open(self._ref_fname).read().strip()
-        return bots.load_bot(ref_path)
-
-    def load_learn_bot(self):
-        learn_path = open(self._learn_fname).read().strip()
-        return bots.load_bot(learn_path)
+        return lower > 0.01

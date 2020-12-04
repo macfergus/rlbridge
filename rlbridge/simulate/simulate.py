@@ -12,7 +12,7 @@ __all__ = [
 ]
 
 
-GameRecord = namedtuple('GameRecord', 'game points_ns points_ew')
+GameRecord = namedtuple('GameRecord', 'game points_ns points_ew declarer')
 
 
 def simulate_game(ns_bot, ew_bot, ns_recorder=None, ew_recorder=None):
@@ -44,7 +44,8 @@ def simulate_game(ns_bot, ew_bot, ns_recorder=None, ew_recorder=None):
         return GameRecord(
             game=hand,
             points_ns=0,
-            points_ew=0
+            points_ew=0,
+            declarer=None
         )
     declarer = hand.auction.result().declarer
     if declarer in (Player.north, Player.south):
@@ -56,5 +57,6 @@ def simulate_game(ns_bot, ew_bot, ns_recorder=None, ew_recorder=None):
     return GameRecord(
         game=hand,
         points_ns=points_ns,
-        points_ew=points_ew
+        points_ew=points_ew,
+        declarer=hand.auction.result().declarer
     )

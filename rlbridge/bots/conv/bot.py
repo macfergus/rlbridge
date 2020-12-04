@@ -14,10 +14,13 @@ __all__ = [
 
 
 def sample(p, temperature):
+    eps = 1e-5
     min_temp = 0.001
     if temperature < min_temp:
         return np.argsort(p)[::-1]
     p = np.power(p, 1.0 / temperature)
+    p /= np.sum(p)
+    p = np.clip(p, eps, 1 - eps)
     p /= np.sum(p)
     n = p.shape[0]
     return np.random.choice(n, size=n, replace=False, p=p)
@@ -45,8 +48,14 @@ def get_reward(game_result, perspective):
         # This can only happen if there is no contract. Impose a
         # small penalty to get out of the equilibrium where no one
         # tries to bid.
-        reward = -100
-    reward /= 1000
+        reward = -500
+    if (
+        perspective == game_result.declarer or
+        perspective.partner == game_result.declarer
+    ):
+        # Give a small reward just for attempting a contract
+        reward += 20
+    reward /= 500
     return reward
 
 
@@ -82,6 +91,8 @@ class ConvBot(Bot):
         self.temperature = 1.0
 
         self._max_contract = 7
+
+        self._compiled_for_training = False
 
     def identify(self):
         return '{}_{:07d}'.format(
@@ -208,38 +219,44 @@ class ConvBot(Bot):
         )
 
     def pretrain(self, x_state, y_call, y_play, y_value, callback=None):
+        kwargs = {}
+        if callback is not None:
+            kwargs['callbacks'] = [callback]
         return self.model.fit(
             x_state,
             [y_call, y_play, y_value],
             verbose=0,
-            batch_size=1024,
-            callbacks=[callback]
+            batch_size=512,
+            **kwargs
         )
 
     def train(self, episodes):
-        self.model.compile(
-            optimizer=SGD(lr=0.01, clipnorm=0.5),
-            loss=[
-                policy_loss,
-                policy_loss,
-                'mse'
-            ],
-            loss_weights=[
-                1.0,
-                1.0,
-                0.05,
-            ]
-        )
+        if not self._compiled_for_training:
+            self.model.compile(
+                optimizer=SGD(lr=0.005, clipnorm=0.5),
+                loss=[
+                    'categorical_crossentropy',
+                    'categorical_crossentropy',
+                    'mse'
+                ],
+                loss_weights=[
+                    1.0,
+                    1.0,
+                    0.05,
+                ]
+            )
+            self._compiled_for_training = True
         x_state, y_call, y_play, y_value = prepare_training_data(episodes)
         history = self.model.fit(
             x_state,
             [y_call, y_play, y_value],
+            batch_size=512,
             epochs=1,
             verbose=0
         )
         return {
             'loss': history.history['loss'][0],
-            'call_loss': history.history['dense_2_loss'][0],
-            'play_loss': history.history['dense_4_loss'][0],
-            'value_loss': history.history['dense_6_loss'][0],
+            'call_loss': history.history['call_output_loss'][0],
+            'play_loss': history.history['play_output_loss'][0],
+            'value_loss': history.history['value_output_loss'][0],
         }

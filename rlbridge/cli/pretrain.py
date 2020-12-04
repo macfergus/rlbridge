@@ -80,20 +80,18 @@ class Pretrain(Command):
                 concat_inplace(y_call, y1)
                 concat_inplace(y_play, y2)
                 concat_inplace(y_value, y3)
-            if X.shape[0] >= 24000:
-                with tqdm() as trainbar:
-                    hist = bot.pretrain(
-                        X, y_call, y_play, y_value,
-                        callback=TQDMCallback(trainbar, X.shape[0])
-                    )
-                    call_loss = hist.history['call_output_loss'][0]
-                    play_loss = hist.history['play_output_loss'][0]
-                    value_loss = hist.history['value_output_loss'][0]
-                    tqdm.write(
-                        f'after {i} games: ' +
-                        f'call {call_loss:.3f} ' +
-                        f'play {play_loss:.3f} ' +
-                        f'value {value_loss:.3f}'
-                    )
+            if X.shape[0] >= 15000:
+                hist = bot.pretrain(
+                    X, y_call, y_play, y_value,
+                )
+                call_loss = hist.history['call_output_loss'][0]
+                play_loss = hist.history['play_output_loss'][0]
+                value_loss = hist.history['value_output_loss'][0]
+                tqdm.write(
+                    f'after {i} games: ' +
+                    f'call {call_loss:.3f} ' +
+                    f'play {play_loss:.3f} ' +
+                    f'value {value_loss:.3f}'
+                )
                 save_bot(bot, args.bot_out)
                 X, y_call, y_play, y_value = None, None, None, None
