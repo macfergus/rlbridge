@@ -60,15 +60,36 @@ class Pretrain(Command):
 
         simulate_bot = init_bot('randombot', {}, {})
         X, y_call, y_play, y_value = None, None, None, None
+        made = 0
+        defended = 0
         for i in tqdm(range(args.num_games)):
             # Make sure the training data includes a wide range of
             # contracts. Without this limit, it will tend to land on
             # very high contracts.
             simulate_bot.set_option('max_contract', random.randint(1, 7))
             game_result = simulate_game(simulate_bot, simulate_bot)
-            p = random.choice([
-                Player.north, Player.east, Player.west, Player.south
-            ])
+            if game_result.declarer is None:
+                continue
+            if game_result.contract_made:
+                made += 1
+                p = random.choice([
+                    game_result.declarer, game_result.declarer.partner
+                ])
+            else:
+                # down-sample defended contracts
+                if random.random() > 0.1:
+                    continue
+                defended += 1
+                # Prefer the partnership that earned points, but not
+                # 100% of the time
+                if random.random() > 0.1:
+                    p = random.choice([
+                        game_result.declarer.lho(), game_result.declarer.rho(),
+                    ])
+                else:
+                    p = random.choice([
+                        game_result.declarer, game_result.declarer.partner,
+                    ])
             x1, y1, y2, y3 = bot.encode_pretraining(game_result, p)
             if X is None:
                 X = x1
@@ -81,6 +102,9 @@ class Pretrain(Command):
                 concat_inplace(y_play, y2)
                 concat_inplace(y_value, y3)
             if X.shape[0] >= 15000:
+                tqdm.write(f'Training: made {made} defended {defended}')
+                made = 0
+                defended = 0
                 hist = bot.pretrain(
                     X, y_call, y_play, y_value,
                 )

@@ -48,13 +48,7 @@ def get_reward(game_result, perspective):
         # This can only happen if there is no contract. Impose a
         # small penalty to get out of the equilibrium where no one
         # tries to bid.
-        reward = -500
-    if (
-        perspective == game_result.declarer or
-        perspective.partner == game_result.declarer
-    ):
-        # Give a small reward just for attempting a contract
-        reward += 20
+        reward = -100
     reward /= 500
     return reward
 
@@ -194,17 +188,15 @@ class ConvBot(Bot):
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
         values = np.zeros(n)
         i = 0
-        for state, _ in replay_game(game):
+        for state, action in replay_game(game):
             if state.next_decider == perspective:
                 states[i] = self.encoder.encode_full_game(state, perspective)
                 values[i] = reward
                 if state.phase == Phase.auction:
-                    calls[i] = self.encoder.encode_legal_calls(state)
-                    calls[i] /= np.sum(calls[i])
+                    calls[i] = self.encoder.encode_call_action(action.call)
                     plays[i] = self.encoder.encode_play_action(None)
                 else:
-                    plays[i] = self.encoder.encode_legal_plays(state)
-                    plays[i] /= np.sum(plays[i])
+                    plays[i] = self.encoder.encode_play_action(action.play)
                     calls[i] = self.encoder.encode_call_action(None)
                 i += 1
         # Discount the rewards

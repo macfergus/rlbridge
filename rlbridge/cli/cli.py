@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from . import benchmark, demogame, evaluate, initbot, pretrain, selfplay
+from . import benchmark, demogame, evaluate, initbot, pretrain, rename, selfplay
 
 
 def cli():
@@ -14,6 +14,7 @@ def cli():
         evaluate.Evaluate(),
         initbot.InitBot(),
         pretrain.Pretrain(),
+        rename.Rename(),
         selfplay.SelfPlay(),
     ]
     command_map = {}
