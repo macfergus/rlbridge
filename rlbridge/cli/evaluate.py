@@ -5,6 +5,7 @@ from tqdm import tqdm
 
 from .. import bots
 from ..io import parse_options
+from ..players import Player
 from ..simulate import simulate_game
 from .command import Command
 
@@ -38,6 +39,10 @@ class Evaluate(Command):
             bot2.set_option(key, value)
 
         margins = []
+        bot1_wins = 0
+        bot2_wins = 0
+        bot1_contracts = 0
+        bot2_contracts = 0
         for _ in tqdm(range(args.num_games)):
             if random.choice([0, 1]) == 0:
                 ns_bot = bot1
@@ -50,13 +55,43 @@ class Evaluate(Command):
             except ValueError:
                 tqdm.write("oops :(")
                 continue
+            bot1_declared = (
+                (
+                    ns_bot is bot1 and
+                    result.declarer in (Player.north, Player.south)
+                ) or (
+                    ew_bot is bot1 and
+                    result.declarer in (Player.east, Player.west)
+                )
+            )
+            bot2_declared = (
+                (
+                    ns_bot is bot2 and
+                    result.declarer in (Player.north, Player.south)
+                ) or (
+                    ew_bot is bot2 and
+                    result.declarer in (Player.east, Player.west)
+                )
+            )
+            if bot1_declared and result.contract_made:
+                bot1_contracts += 1
+            if bot2_declared and result.contract_made:
+                bot2_contracts += 1
             if ns_bot is bot1:
                 margins.append(result.points_ns - result.points_ew)
+                if result.points_ns > result.points_ew:
+                    bot1_wins += 1
+                else:
+                    bot2_wins += 1
             else:
                 margins.append(result.points_ew - result.points_ns)
+                if result.points_ew > result.points_ns:
+                    bot1_wins += 1
+                else:
+                    bot2_wins += 1
         margins = np.array(margins)
         mean_margin = np.mean(margins)
-        lower, upper = estimate_ci(margins, 0.05, 0.95, n_bootstrap=1000)
+        lower, upper = estimate_ci(margins, 0.05, 0.95, n_bootstrap=5000)
         if mean_margin > 0:
             winner = bot1
             loser = bot2
@@ -66,6 +101,18 @@ class Evaluate(Command):
             mean_margin = -1 * mean_margin
             lower = -1 * lower
             upper = -1 * upper
+        print('{} made {} contracts, {} made {}'.format(
+            bot1.identify(),
+            bot1_contracts,
+            bot2.identify(),
+            bot2_contracts
+        ))
+        print('{} won {}, {} won {}'.format(
+            bot1.identify(),
+            bot1_wins,
+            bot2.identify(),
+            bot2_wins
+        ))
         print('{} beats {} by {:.1f} points per game (over {} games)'.format(
             winner.identify(),
             loser.identify(),

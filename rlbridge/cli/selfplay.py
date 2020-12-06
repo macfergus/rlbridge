@@ -142,13 +142,13 @@ def do_selfplay(q, logger, bot_dir, max_contract):
             if learner_declared and contract_made:
                 p_keep = 1.0
             elif learner_declared and (not contract_made):
-                p_keep = 0.2
-            elif (not learner_declared) and contract_made:
-                # learner defended and lost
-                p_keep = 0.04
+                p_keep = 0.1
             elif (not learner_declared) and (not contract_made):
                 # learner defended and won
-                p_keep = 0.2
+                p_keep = 0.5
+            elif (not learner_declared) and contract_made:
+                # learner defended and lost
+                p_keep = 0.1 * 0.5
             if np.random.random() >= p_keep:
                 discarded += 1
                 continue
@@ -197,7 +197,7 @@ def show_log(log_q):
 class SelfPlay(Command):
     def register_arguments(self, parser):
         parser.add_argument(
-            '--max-games', type=int, default=10000,
+            '--max-games', type=int, default=50000,
             help='Restart the trainer process after this many games.'
         )
         parser.add_argument('--max-contract', type=int, default=7)

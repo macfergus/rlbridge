@@ -52,6 +52,7 @@ class TQDMCallback(Callback):
 class Pretrain(Command):
     def register_arguments(self, parser):
         parser.add_argument('--num-games', type=int, default=1)
+        parser.add_argument('--simulate-bot')
         parser.add_argument('bot_in')
         parser.add_argument('bot_out')
 

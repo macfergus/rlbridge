@@ -77,7 +77,7 @@ class TrainEvalLoop:
             self, episode_q, pool_fname, out_dir, logger,
             gate=True,
             max_contract=7,
-            max_games=10000,
+            max_games=50000,
             episodes_per_train=200,
             eval_games=200,
             eval_chunk=20,
@@ -162,9 +162,9 @@ class TrainEvalLoop:
         )
         # For evaluation, lower the temperature to bias toward
         # stronger actions.
-        ref_bot.set_option('temperature', 0.5)
+        ref_bot.set_option('temperature', 0.2)
         ref_bot.set_option('max_contract', self._max_contract)
-        self.training_bot.set_option('temperature', 0.5)
+        self.training_bot.set_option('temperature', 0.2)
         self.training_bot.set_option('max_contract', self._max_contract)
 
         num_games = 0
