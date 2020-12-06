@@ -56,7 +56,7 @@ class WriteableBotPool:
         new_bot_fname = self._save_bot(new_best_bot)
         # Keep the last 5 promoted bots
         self.ref_fnames.append(new_bot_fname)
-        self.ref_fnames = self.ref_fnames[:5]
+        self.ref_fnames = self.ref_fnames[-5:]
         self.logger.log(f'Ref bots are: {self.ref_fnames}')
         self.learn_fname = new_bot_fname
 
@@ -108,7 +108,11 @@ class TrainEvalLoop:
             work = self.episode_buffer
             self.episode_buffer = []
             self.logger.log('Training on {} episodes'.format(len(work)))
-            stats = self.training_bot.train(work)
+            stats = self.training_bot.train(
+                work,
+                reinforce_only=True,
+                use_advantage=False
+            )
             self.logger.log('Loss: {:.3f} '.format(stats['loss']))
             self.logger.log(
                 'Call: {call_loss:.3f} '
@@ -156,10 +160,11 @@ class TrainEvalLoop:
             f'Evaluating {self.training_bot.identify()} '
             f'against {ref_bot.identify()}'
         )
-        # For evaluation, make both bots choose their strongest actions.
-        ref_bot.set_option('temperature', 0.0)
+        # For evaluation, lower the temperature to bias toward
+        # stronger actions.
+        ref_bot.set_option('temperature', 0.5)
         ref_bot.set_option('max_contract', self._max_contract)
-        self.training_bot.set_option('temperature', 0.0)
+        self.training_bot.set_option('temperature', 0.5)
         self.training_bot.set_option('max_contract', self._max_contract)
 
         num_games = 0

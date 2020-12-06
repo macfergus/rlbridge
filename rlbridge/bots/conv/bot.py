@@ -18,6 +18,7 @@ def sample(p, temperature):
     min_temp = 0.001
     if temperature < min_temp:
         return np.argsort(p)[::-1]
+    p = np.clip(p, eps, 1 - eps)
     p = np.power(p, 1.0 / temperature)
     p /= np.sum(p)
     p = np.clip(p, eps, 1 - eps)
@@ -46,14 +47,14 @@ def get_reward(game_result, perspective):
         reward = game_result.points_ew - game_result.points_ns
     if reward == 0:
         # This can only happen if there is no contract. Impose a
-        # small penalty to get out of the equilibrium where no one
+        # giant penalty to get out of the equilibrium where no one
         # tries to bid.
-        reward = -100
+        reward = -10000
     reward /= 500
     return reward
 
 
-def prepare_training_data(episodes):
+def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
     experience = concat_episodes(episodes)
     states = experience['states']
     call_actions = experience['call_actions']
@@ -64,15 +65,20 @@ def prepare_training_data(episodes):
     calls_made = experience['calls_made'].reshape((-1, 1))
     plays_made = experience['plays_made'].reshape((-1, 1))
 
-    # On steps where the agent made a decision, we want to reinforce
-    # or deinforce the action according to the reward. But on other
-    # steps, we can just target the "not my turn" sentinel directly.
-    call_cols = call_actions.shape[-1]
-    call_mask = np.repeat(calls_made, call_cols, axis=1)
-    call_actions = np.where(call_mask, advantages * call_actions, call_actions)
-    play_cols = play_actions.shape[-1]
-    play_mask = np.repeat(plays_made, play_cols, axis=1)
-    play_actions = np.where(play_mask, advantages * play_actions, play_actions)
+    weight = advantages if use_advantage else rewards
+
+    if not reinforce_only:
+        # On steps where the agent made a decision, we want to reinforce
+        # or deinforce the action according to the reward. But on other
+        # steps, we can just target the "not my turn" sentinel directly.
+        call_cols = call_actions.shape[-1]
+        call_mask = np.repeat(calls_made, call_cols, axis=1)
+        call_actions = np.where(
+            call_mask, weight * call_actions, call_actions)
+        play_cols = play_actions.shape[-1]
+        play_mask = np.repeat(plays_made, play_cols, axis=1)
+        play_actions = np.where(
+            play_mask, weight * play_actions, play_actions)
 
     return states, call_actions, play_actions, rewards
 
@@ -222,10 +228,10 @@ class ConvBot(Bot):
             **kwargs
         )
 
-    def train(self, episodes):
+    def train(self, episodes, reinforce_only=False, use_advantage=True):
         if not self._compiled_for_training:
             self.model.compile(
-                optimizer=SGD(lr=0.005, clipnorm=0.5),
+                optimizer=SGD(lr=0.01, clipnorm=0.5),
                 loss=[
                     'categorical_crossentropy',
                     'categorical_crossentropy',
@@ -238,7 +244,11 @@ class ConvBot(Bot):
                 ]
             )
             self._compiled_for_training = True
-        x_state, y_call, y_play, y_value = prepare_training_data(episodes)
+        x_state, y_call, y_play, y_value = prepare_training_data(
+            episodes,
+            reinforce_only=reinforce_only,
+            use_advantage=use_advantage
+        )
         history = self.model.fit(
             x_state,
             [y_call, y_play, y_value],

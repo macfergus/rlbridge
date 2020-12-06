@@ -109,6 +109,7 @@ def do_selfplay(q, logger, bot_dir, max_contract):
         while True:
             if bot_pool.refresh():
                 num_games = 0
+                discarded = 0
 
             learn_bot = bot_pool.get_learn_bot()
             ref_bot = bot_pool.select_ref_bot()
@@ -126,11 +127,37 @@ def do_selfplay(q, logger, bot_dir, max_contract):
             else:
                 game_result = simulate_game(
                     ref_bot, learn_bot, ew_recorder=recorder)
+            # Oversample made contracts
+            learner_declared = (
+                (
+                    learn_side == 'ns' and
+                    game_result.declarer in (Player.north, Player.south)
+                ) or (
+                    learn_side == 'ew' and
+                    game_result.declarer in (Player.east, Player.west)
+                )
+            )
+            contract_made = game_result.contract_made
+            p_keep = 0.0
+            if learner_declared and contract_made:
+                p_keep = 1.0
+            elif learner_declared and (not contract_made):
+                p_keep = 0.2
+            elif (not learner_declared) and contract_made:
+                # learner defended and lost
+                p_keep = 0.04
+            elif (not learner_declared) and (not contract_made):
+                # learner defended and won
+                p_keep = 0.2
+            if np.random.random() >= p_keep:
+                discarded += 1
+                continue
             num_games += 1
             if num_games % 20 == 0:
-                logger.log('Completed {} games with {}'.format(
+                logger.log('Completed {} games with {}; discarded {}'.format(
                     num_games,
-                    learn_bot.identify()
+                    learn_bot.identify(),
+                    discarded
                 ))
             # One game makes 2 episodes (from each player's perspective)
             if learn_side == 'ns':

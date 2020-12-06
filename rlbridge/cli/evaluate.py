@@ -45,7 +45,11 @@ class Evaluate(Command):
             else:
                 ns_bot = bot2
                 ew_bot = bot1
-            result = simulate_game(ns_bot, ew_bot)
+            try:
+                result = simulate_game(ns_bot, ew_bot)
+            except ValueError:
+                tqdm.write("oops :(")
+                continue
             if ns_bot is bot1:
                 margins.append(result.points_ns - result.points_ew)
             else:
