@@ -1,6 +1,5 @@
 import random
 
-from keras.callbacks import Callback
 from tqdm import tqdm
 
 from ..bots import init_bot, load_bot, save_bot
@@ -20,33 +19,6 @@ class Accumulator:
 
     def avg(self):
         return sum(self.history) / len(self.history)
-
-
-class TQDMCallback(Callback):
-    def __init__(self, pbar, n_examples):
-        self.pbar = pbar
-        self.n_examples = n_examples
-        self._set_total = False
-        self.call_loss = Accumulator()
-        self.play_loss = Accumulator()
-        self.value_loss = Accumulator()
-
-    def on_batch_end(self, batch, logs=None):
-        if logs is None:
-            return
-        if not self._set_total:
-            if 'size' in logs:
-                self.pbar.total = self.n_examples // logs['size']
-                self._set_total = True
-        self.pbar.update()
-        self.call_loss.append(logs.get('call_output_loss', 0))
-        self.play_loss.append(logs.get('play_output_loss', 0))
-        self.value_loss.append(logs.get('value_output_loss', 0))
-        self.pbar.set_postfix(
-            call=self.call_loss.avg(),
-            play=self.play_loss.avg(),
-            value=self.value_loss.avg(),
-        )
 
 
 class Pretrain(Command):

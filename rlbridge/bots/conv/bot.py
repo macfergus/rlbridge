@@ -93,6 +93,7 @@ class ConvBot(Bot):
         self._max_contract = 7
 
         self._compiled_for_training = False
+        self._compiled_for_pretraining = False
 
     def identify(self):
         return '{}_{:07d}'.format(
@@ -220,11 +221,26 @@ class ConvBot(Bot):
         kwargs = {}
         if callback is not None:
             kwargs['callbacks'] = [callback]
+        if not self._compiled_for_pretraining:
+            self.model.compile(
+                optimizer='adam',
+                loss=[
+                    'categorical_crossentropy',
+                    'categorical_crossentropy',
+                    'mse'
+                ],
+                loss_weights=[
+                    1.0,
+                    1.0,
+                    0.1,
+                ]
+            )
+            self._compiled_for_pretraining = True
         return self.model.fit(
             x_state,
             [y_call, y_play, y_value],
             verbose=0,
-            batch_size=512,
+            batch_size=256,
             **kwargs
         )
 

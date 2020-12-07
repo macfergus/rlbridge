@@ -37,10 +37,13 @@ def load_model_from_hdf5_group(inf, custom_objects=None):
         os.unlink(tempfname)
 
 
-def set_tf_options(limit_memory=False):
+def set_tf_options(disable_gpu=False, limit_memory=False):
     """Set Tensorflow options."""
     # Do the import here, not at the top, for funny forking reasons
     import tensorflow as tf
+    if disable_gpu:
+        tf.config.set_visible_devices([], 'GPU')
+        return
     if limit_memory:
         gpus = tf.config.experimental.list_physical_devices('GPU')
         if gpus:
