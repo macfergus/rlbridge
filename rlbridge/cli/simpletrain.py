@@ -64,6 +64,7 @@ class SimpleTrain(Command):
                         f'value {value_loss:.3f}'
                     )
                     bot.add_games(i)
+                    i = 0
                     save_bot(bot, args.bot_out)
                     X, y_call, y_play, y_value = None, None, None, None
         gen.stop()
