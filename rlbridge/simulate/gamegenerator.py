@@ -35,7 +35,7 @@ def generate_games(out_q, ctrl_q, bot_fname, config):
         except queue.Empty:
             pass
 
-        bot.set_option('max_contract', random.randint(1, 7))
+        bot.set_option('max_contract', random.randint(2, 7))
         game_result = simulate_game(bot, bot)
         if game_result.declarer is None:
             continue

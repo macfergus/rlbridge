@@ -28,13 +28,15 @@ class SimpleTrain(Command):
         bot = load_bot(args.bot_in)
 
         i = 0
+        total = 0
         with tqdm(total=args.num_games) as t:
-            while i < args.num_games:
+            while total < args.num_games:
                 try:
                     ep = q.get(timeout=0.5)
                 except queue.Empty:
                     continue
                 i += 1
+                total += 1
                 t.update()
                 gen.maintain()
 
@@ -58,7 +60,7 @@ class SimpleTrain(Command):
                     play_loss = hist.history['play_output_loss'][0]
                     value_loss = hist.history['value_output_loss'][0]
                     tqdm.write(
-                        f'after {i} games: ' +
+                        f'after {total} games: ' +
                         f'call {call_loss:.3f} ' +
                         f'play {play_loss:.3f} ' +
                         f'value {value_loss:.3f}'
