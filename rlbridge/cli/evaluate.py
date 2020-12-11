@@ -81,13 +81,13 @@ class Evaluate(Command):
                 margins.append(result.points_ns - result.points_ew)
                 if result.points_ns > result.points_ew:
                     bot1_wins += 1
-                else:
+                elif result.points_ns < result.points_ew:
                     bot2_wins += 1
             else:
                 margins.append(result.points_ew - result.points_ns)
                 if result.points_ew > result.points_ns:
                     bot1_wins += 1
-                else:
+                elif result.points_ew < result.points_ns:
                     bot2_wins += 1
         margins = np.array(margins)
         mean_margin = np.mean(margins)

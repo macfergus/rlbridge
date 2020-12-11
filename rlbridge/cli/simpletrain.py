@@ -1,4 +1,5 @@
 import queue
+import time
 
 import yaml
 from tqdm import tqdm
@@ -29,16 +30,25 @@ class SimpleTrain(Command):
 
         i = 0
         total = 0
+        last_recv = time.time()
         with tqdm(total=args.num_games) as t:
             while total < args.num_games:
+                gen.maintain()
                 try:
                     ep = q.get(timeout=0.5)
+                    last_recv = time.time()
                 except queue.Empty:
+                    time_since_recv = time.time() - last_recv
+                    if time_since_recv > 10:
+                        tqdm.write(
+                            'Have not received an episode in 10 seconds; '
+                            'shutting down'
+                        )
+                        break
                     continue
                 i += 1
                 total += 1
                 t.update()
-                gen.maintain()
 
                 if X is None:
                     X = ep.X.copy()
@@ -51,7 +61,10 @@ class SimpleTrain(Command):
                     concat_inplace(y_play, ep.y_play)
                     concat_inplace(y_value, ep.y_value)
     
-                if X.shape[0] >= config['training']['chunk_size']:
+                if (
+                    X.shape[0] >= config['training']['chunk_size'] or
+                    total + 1 >= args.num_games
+                ):
                     tqdm.write(f'Training on {X.shape[0]} examples')
                     hist = bot.pretrain(
                         X, y_call, y_play, y_value,

@@ -35,7 +35,8 @@ def generate_games(out_q, ctrl_q, bot_fname, config):
         except queue.Empty:
             pass
 
-        bot.set_option('max_contract', random.randint(2, 7))
+        bot.set_option('max_contract', random.randint(3, 7))
+        bot.set_option('temperature', config['self_play']['temperature'])
         game_result = simulate_game(bot, bot)
         if game_result.declarer is None:
             continue
@@ -44,6 +45,9 @@ def generate_games(out_q, ctrl_q, bot_fname, config):
         defenders = [game_result.declarer.lho(), game_result.declarer.rho()]
 
         if game_result.contract_made:
+            # Skip most low-value contracts
+            if game_result.contract_level < 3 and np.random.random() >= 0.9:
+                continue
             if np.random.random() < sample_lost:
                 p = random.choice(defenders)
             else:
@@ -103,6 +107,7 @@ class GameGenerator:
             proc.join(timeout=0.001)
             if not proc.is_alive():
                 to_clean.append(i)
+                break
         for i in to_clean:
             del self._processes[i]
             del self.ctrl_queues[i]
