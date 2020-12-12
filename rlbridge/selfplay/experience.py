@@ -3,6 +3,8 @@ import json
 import multiprocessing
 import queue
 import random
+import time
+from collections import namedtuple
 
 import numpy as np
 
@@ -16,6 +18,9 @@ from ..simulate import simulate_game
 __all__ = [
     'ExperienceGenerator',
 ]
+
+
+Worker = namedtuple('Worker', 'name proc ctl_q')
 
 
 class BotPool:
@@ -89,6 +94,7 @@ def generate_games(
 
         recorder = ExperienceRecorder()
         learn_side = random.choice(['ns', 'ew'])
+        made_contract = 0
         if learn_side == 'ns':
             game_result = simulate_game(
                 learn_bot, ref_bot, ns_recorder=recorder
@@ -97,9 +103,7 @@ def generate_games(
                 game_result.contract_made and 
                 game_result.declarer in (Player.north, Player.south)
             ):
-                stat_q.put(1)
-            else:
-                stat_q.put(0)
+                made_contract = 1
             episode1 = learn_bot.encode_episode(
                 game_result,
                 Player.north,
@@ -120,9 +124,7 @@ def generate_games(
                 game_result.contract_made and 
                 game_result.declarer in (Player.east, Player.west)
             ):
-                stat_q.put(1)
-            else:
-                stat_q.put(0)
+                made_contract = 1
             episode1 = learn_bot.encode_episode(
                 game_result,
                 Player.east,
@@ -135,10 +137,9 @@ def generate_games(
                 recorder.get_decisions(Player.west),
                 reward=config['reward']
             )
-        if True or np.sum(episode1['rewards']) > 0:
-            exp_q.put(episode1)
-        if True or np.sum(episode2['rewards']) > 0:
-            exp_q.put(episode2)
+        stat_q.put(made_contract)
+        exp_q.put(episode1)
+        exp_q.put(episode2)
 
         count += 1
         if count >= config['max_games_per_worker']:
@@ -150,41 +151,46 @@ class ExperienceGenerator:
     def __init__(self, exp_q, state_path, logger, config):
         self.recv_queue = exp_q
         self._stat_queue = multiprocessing.Queue()
-        self.ctrl_queues = []
         self._bot_fname = state_path
         self._logger = logger
         self._config = config['self_play']
-        self._processes = []
         self._worker_idx = 0
         self._max_contract = 1
         self._contract_history = []
+        self._last_recv = 0.0
+
+        self._workers = {}
         for _ in range(config['self_play']['num_workers']):
             self._new_worker()
 
     def _new_worker(self):
         self._worker_idx += 1
-        ctrl_q = multiprocessing.Queue()
-        proc = multiprocessing.Process(
-            name=f'worker-{self._worker_idx}',
-            target=generate_games,
-            args=(
-                ctrl_q,
-                self.recv_queue,
-                self._stat_queue,
-                self._max_contract,
-                self._bot_fname,
-                self._logger,
-                self._config
-
+        name = f'worker-{self._worker_idx}'
+        ctl_q = multiprocessing.Queue()
+        worker = Worker(
+            name=name,
+            ctl_q=ctl_q,
+            proc=multiprocessing.Process(
+                name=f'worker-{self._worker_idx}',
+                target=generate_games,
+                args=(
+                    ctl_q,
+                    self.recv_queue,
+                    self._stat_queue,
+                    self._max_contract,
+                    self._bot_fname,
+                    self._logger,
+                    self._config
+                )
             )
         )
-        self._processes.append(proc)
-        self.ctrl_queues.append(ctrl_q)
-        return proc
+        self._workers[name] = worker
+        return worker
 
     def start(self):
-        for proc in self._processes:
-            proc.start()
+        self._last_recv = time.time()
+        for w in self._workers.values():
+            w.proc.start()
 
     def maintain(self):
         # Adjust contract limits if needed. If we are making "too many"
@@ -194,6 +200,7 @@ class ExperienceGenerator:
         while True:
             try:
                 made = self._stat_queue.get(block=False)
+                self._last_recv = time.time()
                 self._contract_history.append(made)
             except queue.Empty:
                 break
@@ -212,34 +219,43 @@ class ExperienceGenerator:
                 )
             self._contract_history = []
 
+        # Manage the worker pool
+        # Look for stuck workers, and reap any that shut themselves down
+        # Then bring the pool back up to size
+        now = time.time()
+        if now - self._last_recv > 30.0:
+            self._logger.log('Have not received a game in 30 seconds.')
+            self._logger.log('Replacing ALL workers')
+            for k in list(self._workers.keys()):
+                self._stop_worker(k)
+
         # Replace any dead processes
-        to_clean = []
-        for i in range(len(self._processes)):
-            proc = self._processes[i]
-            proc.join(timeout=0.001)
-            if not proc.is_alive():
-                to_clean.append(i)
-                break
-        for i in to_clean:
-            del self._processes[i]
-            del self.ctrl_queues[i]
-        for _ in range(len(to_clean)):
-            self._logger.log('Recycling worker')
-            self._new_worker().start()
+        for k in list(self._workers.keys()):
+            if not self._workers[k].proc.is_alive():
+                self._stop_worker(k)
+
+        while len(self._workers) < self._config['num_workers']:
+            self._logger.log('Launching new worker')
+            self._new_worker().proc.start()
+
+    def _stop_worker(self, k):
+        self._logger.log(f'Stopping {k}')
+        w = self._workers.pop(k)
+        if w.proc.is_alive():
+            w.ctl_q.put(None)
+        w.proc.join(timeout=0.001)
+        while w.proc.is_alive():
+            w.proc.join(timeout=1)
+            # drain queues to prevent deadlock
+            try:
+                self.recv_queue.get(block=False)
+            except queue.Empty:
+                pass
+            try:
+                self._stat_queue.get(block=False)
+            except queue.Empty:
+                pass
 
     def stop(self):
-        for q in self.ctrl_queues:
-            q.put(None)
-        for proc in self._processes:
-            while proc.is_alive():
-                proc.join(timeout=1)
-                while True:
-                    try:
-                        self.recv_queue.get(block=False)
-                    except queue.Empty:
-                        break
-                while True:
-                    try:
-                        self._stat_queue.get(block=False)
-                    except queue.Empty:
-                        break
+        for k in list(self._workers.keys()):
+            self._stop_worker(k)
