@@ -1,0 +1,129 @@
+import copy
+import json
+import multiprocessing
+import os
+import queue
+import time
+
+from .. import bots
+from ..mputil import disable_sigint
+
+
+class WriteableBotPool:
+    def __init__(self, pool_fname, out_dir, logger):
+        self.pool_fname = pool_fname
+        self.out_dir = out_dir
+        init = json.load(open(pool_fname))
+        self.ref_fnames = copy.copy(init['ref'])
+        self.learn_fname = copy.copy(init['learn'])
+
+        self.learn_bot = bots.load_bot(self.learn_fname)
+
+        self.logger = logger
+
+    def get_learn_bot(self):
+        return self.learn_bot
+
+    def _save_bot(self, bot):
+        out_fname = os.path.join(self.out_dir, bot.identify())
+        out_fname = out_fname.replace(' ', '_')
+        bots.save_bot(bot, out_fname)
+        return out_fname
+
+    def promote(self, new_best_bot):
+        new_bot_fname = self._save_bot(new_best_bot)
+        # Keep the last 5 promoted bots
+        self.ref_fnames.append(new_bot_fname)
+        self.ref_fnames = self.ref_fnames[-5:]
+        self.logger.log(f'Ref bots are: {self.ref_fnames}')
+        self.learn_fname = new_bot_fname
+
+        # After promotion, this is the new gating bot.
+        self.gating_bot = bots.load_bot(self.learn_fname)
+
+        tmpfname = self.pool_fname + '.tmp'
+        with open(tmpfname, 'w') as outf:
+            outf.write(json.dumps({
+                'ref': self.ref_fnames,
+                'learn': self.learn_fname,
+            }))
+        os.rename(tmpfname, self.pool_fname)
+
+
+def do_training(ctl_q, q, state_fname, out_dir, logger, config):
+    disable_sigint()
+
+    bot_pool = WriteableBotPool(state_fname, out_dir, logger)
+    bot = bot_pool.get_learn_bot()
+
+    total_games = 0
+    num_games = 0
+    experience_size = 0
+    experience = []
+    last_log = time.time()
+    while True:
+        try:
+            ctl_q.get_nowait()
+            return
+        except queue.Empty:
+            pass
+
+        try:
+            episode = q.get(timeout=1)
+        except queue.Empty:
+            continue
+
+        total_games += 1
+        num_games += 1
+
+        experience.append(episode)
+        experience_size += episode['states'].shape[0]
+        now = time.time()
+        if now - last_log > 60.0:
+            logger.log(f'{total_games} total games received so far')
+            last_log = now
+        if experience_size < config['chunk_size']:
+            continue
+
+        # When the chunk is big enough, train the current bot
+        logger.log(
+            f'Training on {experience_size} examples from {num_games} games'
+        )
+        h = bot.train(experience, use_advantage=config['use_advantage'])
+        logger.log(
+            f'call_loss {h["call_loss"]} '
+            f'play_loss {h["play_loss"]} '
+            f'value_loss {h["value_loss"]}'
+        )
+        bot.add_games(num_games)
+        bot_pool.promote(bot)
+        num_games = 0
+        experience = []
+        experience_size = 0
+
+
+class Trainer:
+    def __init__(self, exp_q, state_path, out_dir, logger, config):
+        self._ctl_q = multiprocessing.Queue()
+        self._proc = multiprocessing.Process(
+            name='trainer',
+            target=do_training,
+            args=(
+                self._ctl_q,
+                exp_q,
+                state_path,
+                out_dir,
+                logger,
+                config['training']
+            )
+        )
+
+    def start(self):
+        self._proc.start()
+
+    def stop(self):
+        self._ctl_q.put(None)
+        self._proc.join()
+
+    def is_healthy(self):
+        return self._proc.is_alive()

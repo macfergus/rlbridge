@@ -2,8 +2,8 @@
 
 import multiprocessing
 
-from rlbridge import cli
-
 if __name__ == '__main__':
     multiprocessing.set_start_method('forkserver')
+
+    from rlbridge import cli
     cli.cli()

@@ -40,7 +40,7 @@ def replay_game(state):
     return zip(states[:-1], actions)
 
 
-def get_reward(game_result, perspective):
+def get_reward_points(game_result, perspective):
     if perspective in (Player.north, Player.south):
         reward = game_result.points_ns - game_result.points_ew
     else:
@@ -54,12 +54,30 @@ def get_reward(game_result, perspective):
     return reward
 
 
+def get_reward_contracts(game_result, perspective):
+    contract_made = game_result.contract_made
+    is_declarer = (
+        game_result.declarer in [perspective, perspective.partner]
+    )
+    is_defender = (
+        game_result.declarer in [perspective.lho(), perspective.rho()]
+    )
+    if contract_made and is_declarer:
+        # Big reward for making contracts
+        return float(game_result.contract_level)
+    if (not contract_made) and is_defender:
+        # Tiny reward for defeating contracts
+        return 0.1
+    # Nothing for going down, or for no contract
+    return 0.0
+
+
 def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
     experience = concat_episodes(episodes)
     states = experience['states']
     call_actions = experience['call_actions']
     play_actions = experience['play_actions']
-    rewards = experience['rewards']
+    rewards = experience['rewards'].reshape((-1, 1))
     advantages = np.clip(experience['advantages'].reshape((-1, 1)), -2, 2)
 
     calls_made = experience['calls_made'].reshape((-1, 1))
@@ -152,15 +170,19 @@ class ConvBot(Bot):
             )
         return chosen_action
 
-    def encode_episode(self, game_result, perspective, decisions):
-        reward = get_reward(game_result, perspective)
+    def encode_episode(self, game_result, perspective, decisions, reward):
+        if reward == 'points':
+            reward_func = get_reward_points
+        elif reward == 'contracts':
+            reward_func = get_reward_contracts
+        reward_amt = reward_func(game_result, perspective)
         n = len(decisions)
         states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
         calls_made = np.zeros(n)
         plays_made = np.zeros(n)
-        rewards = reward * np.ones(n)
+        rewards = reward_amt * np.ones(n)
         advantages = np.zeros(n)
 
         for i, decision in enumerate(decisions):
@@ -174,7 +196,7 @@ class ConvBot(Bot):
                 plays[i] = self.encoder.encode_play_action(action.play)
                 calls[i] = self.encoder.encode_call_action(None)
                 plays_made[i] = 1
-            advantages[i] = reward - decision['expected_value']
+            advantages[i] = reward_amt - decision['expected_value']
         return Episode(
             states=states,
             call_actions=calls,
@@ -247,8 +269,7 @@ class ConvBot(Bot):
     def train(self, episodes, reinforce_only=False, use_advantage=True):
         if not self._compiled_for_training:
             self.model.compile(
-                #optimizer=SGD(lr=0.01, clipnorm=0.5),
-                optimizer='adam',
+                optimizer=SGD(lr=0.01, clipnorm=0.5),
                 loss=[
                     'categorical_crossentropy',
                     'categorical_crossentropy',
