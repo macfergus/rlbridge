@@ -239,12 +239,19 @@ class ExperienceGenerator:
             self._new_worker().proc.start()
 
     def _stop_worker(self, k):
+        stop_time = time.time()
         self._logger.log(f'Stopping {k}')
         w = self._workers.pop(k)
         if w.proc.is_alive():
             w.ctl_q.put(None)
         w.proc.join(timeout=0.001)
         while w.proc.is_alive():
+            if time.time() - stop_time > 15:
+                self._logger.log('Worker is still around after 15s!')
+                self._logger.log('Sending TERM')
+                w.proc.terminate()
+                w.proc.join(timeout=0.01)
+                break
             w.proc.join(timeout=1)
             # drain queues to prevent deadlock
             try:
