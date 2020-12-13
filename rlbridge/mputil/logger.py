@@ -12,10 +12,10 @@ class MPLogger:
         self._log_q = log_q
 
     def log(self, msg):
-        ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        timestr = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         proc_name = multiprocessing.current_process().name
 
-        self._log_q.put(f'{ts} ({proc_name}) {msg}')
+        self._log_q.put(f'{timestr} ({proc_name}) {msg}')
 
 
 def print_log(log_q):

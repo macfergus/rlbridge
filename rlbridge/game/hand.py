@@ -36,7 +36,7 @@ class Action:
     def make(cls, call_or_play):
         if isinstance(call_or_play, Call):
             return Action(call=call_or_play)
-        elif isinstance(call_or_play, Play):
+        if isinstance(call_or_play, Play):
             return Action(play=call_or_play)
         raise TypeError(type(call_or_play))
 

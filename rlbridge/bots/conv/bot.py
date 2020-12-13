@@ -6,7 +6,6 @@ from ...players import Player
 from ...rl import Decision, Episode, concat_episodes
 from ..base import Bot, UnrecognizedOptionError
 from .encoder import Encoder
-from .losses import policy_loss
 
 __all__ = [
     'ConvBot',
@@ -208,9 +207,8 @@ class ConvBot(Bot):
         )
 
     def encode_pretraining(self, game_record, perspective):
-        reward = get_reward(game_record, perspective)
+        reward = get_reward_points(game_record, perspective)
         game = game_record.game
-        full_state = self.encoder.encode_full_game(game, perspective)
         n = game.num_states
         states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))

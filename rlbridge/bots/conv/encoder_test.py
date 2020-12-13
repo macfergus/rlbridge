@@ -128,7 +128,7 @@ class ConvEncoderTest(unittest.TestCase):
             .apply_play(Play.of('10D'))
         )
 
-        # Array should have XX filled rows:
+        # Array should have 6 filled rows:
         # 0 - N bids 1H
         # 1 - E passes
         # 2 - S passes
@@ -136,10 +136,10 @@ class ConvEncoderTest(unittest.TestCase):
         # 4 - E opens 10D
         # 5 - dummy exposed, N chooses
         encoded = self.encoder.encode_full_game(state, Player.north)
-        auction_1 = encoded[0]
-        auction_2 = encoded[1]
-        auction_3 = encoded[2]
-        auction_4 = encoded[3]
+        # auction_1 = encoded[0]
+        # auction_2 = encoded[1]
+        # auction_3 = encoded[2]
+        # auction_4 = encoded[3]
         play_1 = encoded[4]
         play_2 = encoded[5]
         rest = encoded[6:]

@@ -116,7 +116,7 @@ class Bid:
     def __lt__(self, other_bid):
         if self.tricks < other_bid.tricks:
             return True
-        elif other_bid.tricks < self.tricks:
+        if other_bid.tricks < self.tricks:
             return False
         return self.denomination < other_bid.denomination
 

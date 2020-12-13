@@ -2,8 +2,6 @@ from keras import Model
 from keras.layers import BatchNormalization, Conv1D, Dense, Flatten, Input
 from keras.optimizers import Adam
 
-from .losses import policy_loss
-
 
 def construct_model(
         input_shape,
@@ -16,7 +14,7 @@ def construct_model(
     game_input = Input(input_shape)
 
     y = game_input
-    for i in range(num_layers):
+    for _ in range(num_layers):
         y = Conv1D(num_filters, kernel_size, activation='relu')(y)
         y = BatchNormalization()(y)
 

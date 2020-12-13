@@ -3,7 +3,12 @@ disable=
     missing-docstring,
     too-few-public-methods,
     too-many-public-methods,
-    too-many-return-statements
+    too-many-return-statements,
+    duplicate-code,
+    too-many-instance-attributes,
+    too-many-locals,
+    too-many-arguments,
+    no-self-use
 
 [BASIC]
-good-names=i,j,k,of,n
+good-names=i,j,k,of,n,X,x,y,q,mo,p,t

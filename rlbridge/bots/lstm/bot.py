@@ -268,20 +268,20 @@ class LSTMBot(Bot):
                 key = 'holding_{}'.format(player)
                 diagnostics[key] = fmt_hand
         if self._last_call_prob is not None:
-            ps = []
+            probs = []
             for i, p in enumerate(self._last_call_prob):
-                ps.append('{}: {:.3f}'.format(
+                probs.append('{}: {:.3f}'.format(
                     self.encoder.decode_call_index(i),
                     p
                 ))
-            diagnostics['call_p'] = ' '.join(ps)
+            diagnostics['call_p'] = ' '.join(probs)
         if self._last_play_prob is not None:
-            ps = []
+            probs = []
             for i, p in enumerate(self._last_play_prob):
-                ps.append('{}: {:.3f}'.format(
+                probs.append('{}: {:.3f}'.format(
                     self.encoder.decode_play_index(i),
                     p
                 ))
-            diagnostics['play_p'] = ' '.join(ps)
+            diagnostics['play_p'] = ' '.join(probs)
 
         return diagnostics

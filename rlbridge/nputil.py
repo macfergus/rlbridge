@@ -1,10 +1,10 @@
 def concat_inplace(x, y):
-    n1 = x.shape[0]
-    n2 = y.shape[0]
-    n_final = n1 + n2
+    x_size = x.shape[0]
+    y_size = y.shape[0]
+    n_final = x_size + y_size
     final_shape = (n_final,) + x.shape[1:]
     x.resize(final_shape, refcheck=False)
-    x[n1:] = y
+    x[x_size:] = y
 
 
 def shrink_axis(array, n):

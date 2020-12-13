@@ -15,11 +15,11 @@ class Suit(enum.Enum):
     def of(cls, suit_str):
         if suit_str in ('C', 'c', '♣'):
             return Suit.clubs
-        elif suit_str in ('D', 'd', '♦'):
+        if suit_str in ('D', 'd', '♦'):
             return Suit.diamonds
-        elif suit_str in ('H', 'h', '♥'):
+        if suit_str in ('H', 'h', '♥'):
             return Suit.hearts
-        elif suit_str in ('S', 's', '♠'):
+        if suit_str in ('S', 's', '♠'):
             return Suit.spades
         raise ValueError(suit_str)
 

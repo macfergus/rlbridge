@@ -42,9 +42,6 @@ class WriteableBotPool:
         self.logger.log(f'Ref bots are: {self.ref_fnames}')
         self.learn_fname = new_bot_fname
 
-        # After promotion, this is the new gating bot.
-        self.gating_bot = bots.load_bot(self.learn_fname)
-
         tmpfname = self.pool_fname + '.tmp'
         with open(tmpfname, 'w') as outf:
             outf.write(json.dumps({
@@ -93,11 +90,11 @@ def do_training(ctl_q, q, state_fname, out_dir, logger, config):
         logger.log(
             f'Training on {experience_size} examples from {num_games} games'
         )
-        h = bot.train(experience, use_advantage=config['use_advantage'])
+        hist = bot.train(experience, use_advantage=config['use_advantage'])
         logger.log(
-            f'call_loss {h["call_loss"]} '
-            f'play_loss {h["play_loss"]} '
-            f'value_loss {h["value_loss"]}'
+            f'call_loss {hist["call_loss"]} '
+            f'play_loss {hist["play_loss"]} '
+            f'value_loss {hist["value_loss"]}'
         )
         bot.add_games(num_games)
         bot_pool.promote(bot)

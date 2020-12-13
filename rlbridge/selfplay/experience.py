@@ -9,7 +9,7 @@ from collections import namedtuple
 import numpy as np
 
 from .. import kerasutil
-from ..bots import load_bot, save_bot
+from ..bots import load_bot
 from ..mputil import disable_sigint
 from ..players import Player
 from ..rl import ExperienceRecorder
@@ -27,7 +27,10 @@ class BotPool:
     def __init__(self, fname, logger):
         self._fname = fname
         self._ref_bot_names = None
+        self._ref_bots = []
+        self._ref_weights = []
         self._learn_bot_name = None
+        self._learn_bot = None
         self.logger = logger
 
     def refresh(self):
@@ -68,7 +71,7 @@ class BotPool:
 
 
 def generate_games(
-    ctl_q, exp_q, stat_q, max_contract, state_fname, logger, config
+        ctl_q, exp_q, stat_q, max_contract, state_fname, logger, config
 ):
     disable_sigint()
     kerasutil.set_tf_options(disable_gpu=True)
@@ -87,10 +90,10 @@ def generate_games(
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
 
-        mc = random.randint(max_contract, 7)
-        learn_bot.set_option('max_contract', mc)
+        max_c = random.randint(max_contract, 7)
+        learn_bot.set_option('max_contract', max_c)
         learn_bot.set_option('temperature', config['temperature'])
-        ref_bot.set_option('max_contract', mc)
+        ref_bot.set_option('max_contract', max_c)
         ref_bot.set_option('temperature', config['temperature'])
 
         recorder = ExperienceRecorder()
@@ -101,8 +104,8 @@ def generate_games(
                 learn_bot, ref_bot, ns_recorder=recorder
             )
             if (
-                game_result.contract_made and 
-                game_result.declarer in (Player.north, Player.south)
+                    game_result.contract_made and
+                    game_result.declarer in (Player.north, Player.south)
             ):
                 made_contract = 1
             episode1 = learn_bot.encode_episode(
@@ -122,8 +125,8 @@ def generate_games(
                 ref_bot, learn_bot, ew_recorder=recorder
             )
             if (
-                game_result.contract_made and 
-                game_result.declarer in (Player.east, Player.west)
+                    game_result.contract_made and
+                    game_result.declarer in (Player.east, Player.west)
             ):
                 made_contract = 1
             episode1 = learn_bot.encode_episode(
@@ -190,8 +193,8 @@ class ExperienceGenerator:
 
     def start(self):
         self._last_recv = time.time()
-        for w in self._workers.values():
-            w.proc.start()
+        for worker in self._workers.values():
+            worker.proc.start()
 
     def maintain(self):
         # Adjust contract limits if needed. If we are making "too many"
@@ -211,8 +214,8 @@ class ExperienceGenerator:
             self._logger.log(f'Made {made} contracts over {n_hands} hands')
             pct_made = np.mean(self._contract_history)
             if (
-                pct_made >= self._config['target_contracts_made'] and
-                self._max_contract < 7
+                    pct_made >= self._config['target_contracts_made'] and
+                    self._max_contract < 7
             ):
                 self._max_contract += 1
                 self._logger.log(
@@ -242,18 +245,18 @@ class ExperienceGenerator:
     def _stop_worker(self, k):
         stop_time = time.time()
         self._logger.log(f'Stopping {k}')
-        w = self._workers.pop(k)
-        if w.proc.is_alive():
-            w.ctl_q.put(None, timeout=1)
-        w.proc.join(timeout=0.001)
-        while w.proc.is_alive():
+        worker = self._workers.pop(k)
+        if worker.proc.is_alive():
+            worker.ctl_q.put(None, timeout=1)
+        worker.proc.join(timeout=0.001)
+        while worker.proc.is_alive():
             if time.time() - stop_time > 15:
                 self._logger.log('Worker is still around after 15s!')
                 self._logger.log('Sending TERM')
-                w.proc.terminate()
-                w.proc.join(timeout=0.01)
+                worker.proc.terminate()
+                worker.proc.join(timeout=0.01)
                 break
-            w.proc.join(timeout=1)
+            worker.proc.join(timeout=1)
             # drain queues to prevent deadlock
             try:
                 self.recv_queue.get(block=False)

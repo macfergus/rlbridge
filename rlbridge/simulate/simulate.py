@@ -14,7 +14,7 @@ __all__ = [
 
 GameRecord = namedtuple('GameRecord', [
     'game',
-    'points_ns', 
+    'points_ns',
     'points_ew',
     'declarer',
     'contract_made',

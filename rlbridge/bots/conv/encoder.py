@@ -23,13 +23,13 @@ def reverse_states(final_state):
 def unwind_states(final_state):
     states = reverse_states(final_state)
     unwound = []
-    for i, s in enumerate(states):
+    for i, state in enumerate(states):
         action = None
         if i < len(states) - 1:
             action = states[i + 1].prev_action
         unwound.append(PSA(
-            player=s.next_player,
-            state=s,
+            player=state.next_player,
+            state=state,
             action=action
         ))
     return unwound
@@ -153,14 +153,13 @@ class Encoder:
         return action
 
     def encode_game_state(self, state, perspective):
-        s = np.zeros(self.DIM_STATE)
+        array = np.zeros(self.DIM_STATE)
         players = [
             perspective,
             perspective.lho(),
             perspective.partner,
             perspective.rho()
         ]
-        player_offset = {player: i for i, player in enumerate(players)}
 
         # Fill in visible cards
         cards = state.visible_cards(perspective)
@@ -168,28 +167,28 @@ class Encoder:
             start_index = self.VISIBLE_CARD_START + 53 * i
             card_array = np.zeros(53)
             if player in cards:
-                for c in cards[player]:
-                    card_array[self.encode_card(c) + 1] = 1
+                for card in cards[player]:
+                    card_array[self.encode_card(card) + 1] = 1
             else:
                 # This player's cards are not currently visible to the
                 # current decider. This lets us distinguish an empty
                 # hand from one that we can't see.
                 card_array[0] = 1
-            s[start_index:start_index + 53] = card_array
+            array[start_index:start_index + 53] = card_array
 
         # Fill in vulnerability bits
         side = perspective.side()
         opposite_side = side.opposite()
         if state.is_vulnerable(side):
-            s[self.DIM_VULNERABILITY] = 1
+            array[self.DIM_VULNERABILITY] = 1
         if state.is_vulnerable(opposite_side):
-            s[self.DIM_VULNERABILITY + 1] = 1
-        return s
+            array[self.DIM_VULNERABILITY + 1] = 1
+        return array
 
     def encode_action(self, action, who_did_it, perspective):
-        s = np.zeros(self.DIM_ACTION)
+        array = np.zeros(self.DIM_ACTION)
         if action is None:
-            return s
+            return array
         players = [
             perspective,
             perspective.lho(),
@@ -201,12 +200,12 @@ class Encoder:
         if action.is_call:
             start_index = 38 * offset
             call_index = self.encode_call(action.call)
-            s[start_index + call_index] = 1
+            array[start_index + call_index] = 1
         if action.is_play:
             start_index = self.DIM_AUCTION + 52 * offset
             card_index = self.encode_card(action.play.card)
-            s[start_index + card_index] = 1
-        return s
+            array[start_index + card_index] = 1
+        return array
 
     def input_shape(self):
         return (self.GAME_LENGTH, self.DIM)

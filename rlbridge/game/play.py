@@ -73,17 +73,6 @@ class Trick:
             return self.next_player.rotate().rotate().rotate()
         return self.next_player
 
-    def leader(self):
-        leader = None
-        lead_player = None
-        player = self.opener()
-        for card in self.cards:
-            if beats(card, leader, self.trump_suit):
-                leader = card
-                lead_player = player
-            player = player.rotate()
-        return PlayerCard(player, card)
-
 
 class Play:
     def __init__(self, card):

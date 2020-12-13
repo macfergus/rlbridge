@@ -17,7 +17,7 @@ class SelfPlayManager:
             config=self.config
         )
         self._trainer = Trainer(
-            exp_q=self._experience_q, 
+            exp_q=self._experience_q,
             state_path=state_path,
             out_dir=out_dir,
             config=config,
