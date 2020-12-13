@@ -1,16 +1,11 @@
 import copy
 import json
-import multiprocessing
 import os
 import queue
 import time
-from collections import namedtuple
 
 from .. import bots
-from ..mputil import disable_sigint
-
-
-Worker = namedtuple('Worker', 'ctl_q proc')
+from ..mputil import Loopable, LoopingProcess
 
 
 class WriteableBotPool:
@@ -51,95 +46,81 @@ class WriteableBotPool:
         os.rename(tmpfname, self.pool_fname)
 
 
-def do_training(ctl_q, q, state_fname, out_dir, logger, config):
-    disable_sigint()
+class TrainerImpl(Loopable):
+    def __init__(self, q, state_fname, out_dir, logger, config):
+        self._bot_pool = WriteableBotPool(state_fname, out_dir, logger)
+        self._bot = self._bot_pool.get_learn_bot()
+        self._logger = logger
+        self._config = config['training']
 
-    bot_pool = WriteableBotPool(state_fname, out_dir, logger)
-    bot = bot_pool.get_learn_bot()
+        self._q = q
 
-    total_games = 0
-    num_games = 0
-    experience_size = 0
-    experience = []
-    last_log = time.time()
-    while True:
+        self._total_games = 0
+        self._num_games = 0
+        self._experience_size = 0
+        self._experience = []
+        self._last_log = time.time()
+
+    def run_once(self):
         try:
-            ctl_q.get_nowait()
+            episode = self._q.get(timeout=1)
+        except queue.Empty:
             return
-        except queue.Empty:
-            pass
 
-        try:
-            episode = q.get(timeout=1)
-        except queue.Empty:
-            continue
+        self._total_games += 1
+        self._num_games += 1
 
-        total_games += 1
-        num_games += 1
-
-        experience.append(episode)
-        experience_size += episode['states'].shape[0]
+        self._experience.append(episode)
+        self._experience_size += episode['states'].shape[0]
         now = time.time()
-        if now - last_log > 60.0:
-            logger.log(f'{total_games} total games received so far')
-            last_log = now
-        if experience_size < config['chunk_size']:
-            continue
+        if now - self._last_log > 60.0:
+            self._logger.log(f'{self._total_games} total games received so far')
+            self._last_log = now
+        if self._experience_size < self._config['chunk_size']:
+            return
 
         # When the chunk is big enough, train the current bot
-        logger.log(
-            f'Training on {experience_size} examples from {num_games} games'
+        self._logger.log(
+            f'Training on {self._experience_size} examples from '
+            f'{self._num_games} games'
         )
-        hist = bot.train(experience, use_advantage=config['use_advantage'])
-        logger.log(
+        hist = self._bot.train(
+            experience,
+            use_advantage=self._config['use_advantage']
+        )
+        self._logger.log(
             f'call_loss {hist["call_loss"]} '
             f'play_loss {hist["play_loss"]} '
             f'value_loss {hist["value_loss"]}'
         )
-        bot.add_games(num_games)
-        bot_pool.promote(bot)
-        num_games = 0
-        experience = []
-        experience_size = 0
+        self._bot.add_games(num_games)
+        self._bot_pool.promote(bot)
+        self._num_games = 0
+        self._experience = []
+        self._experience_size = 0
 
 
 class Trainer:
     def __init__(self, exp_q, state_path, out_dir, logger, config):
         self._exp_q = exp_q
-        self._state_path = state_path
-        self._out_dir = out_dir
-        self._logger = logger
-        self._config = config
-
-        self._worker = self._new_worker()
-
-    def _new_worker(self):
-        ctl_q = multiprocessing.Queue()
-        proc = multiprocessing.Process(
-            name='trainer',
-            target=do_training,
-            args=(
-                ctl_q,
-                self._exp_q,
-                self._state_path,
-                self._out_dir,
-                self._logger,
-                self._config['training']
-            )
+        self._proc = LoopingProcess(
+            'trainer',
+            TrainerImpl,
+            kwargs={
+                'q': self._exp_q,
+                'state_fname': state_path,
+                'out_dir': out_dir,
+                'logger': logger,
+                'config': config,
+            },
+            restart=True
         )
-        return Worker(ctl_q=ctl_q, proc=proc)
 
     def start(self):
-        self._worker.proc.start()
+        self._proc.start()
 
     def stop(self):
-        if self._worker.proc.is_alive():
-            self._worker.ctl_q.put(None)
-        self._worker.proc.join()
+        self._proc.stop()
 
     def maintain(self):
-        # Restart the trainer process if it died
-        if not self._worker.proc.is_alive():
-            self._logger.log('Restarting trainer')
-            self._worker = self._new_worker()
-            self._worker.proc.start()
+        self._proc.maintain()

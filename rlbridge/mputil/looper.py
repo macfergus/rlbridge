@@ -1,5 +1,6 @@
 import multiprocessing
 import queue
+import time
 from collections import namedtuple
 
 from .interrupt import disable_sigint
@@ -69,7 +70,17 @@ class LoopingProcess:
                 self._worker = self._new_worker()
                 self._worker.proc.start()
 
-    def stop(self):
+    def stop(self, drain=None):
         if self._worker.proc.is_alive():
             self._worker.ctrl_q.put(None)
-        self._worker.proc.join()
+        self._worker.proc.join(timeout=0.001)
+        stop_time = time.time()
+        while self._worker.proc.is_alive():
+            self._worker.proc.join(timeout=1)
+            if time.time() - stop_time > 15:
+                # tried to exit cleanly for 15 seconds; give up
+                self._worker.proc.terminate()
+                self._worker.proc.join(timeout=0.001)
+                break
+            if drain is not None:
+                drain()
