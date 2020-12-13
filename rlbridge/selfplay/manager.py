@@ -29,11 +29,9 @@ class SelfPlayManager:
         self._trainer.start()
         self._worker_pool.start()
 
-    def is_healthy(self):
-        return self._trainer.is_healthy()
-
     def maintain(self):
         self._worker_pool.maintain()
+        self._trainer.maintain()
 
     def stop(self):
         self.logger.log('stop self-play!')

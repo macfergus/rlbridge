@@ -46,9 +46,6 @@ class SelfPlay(Command):
         try:
             while True:
                 selfplay.maintain()
-                if not selfplay.is_healthy():
-                    logger.log('Self-play workers crashed; shutting down')
-                    break
                 time.sleep(1)
         except KeyboardInterrupt:
             logger.log('received ^C, shutting down...')

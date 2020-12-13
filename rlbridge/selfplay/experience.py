@@ -87,9 +87,10 @@ def generate_games(
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
 
-        learn_bot.set_option('max_contract', max_contract)
+        mc = random.randint(max_contract, 7)
+        learn_bot.set_option('max_contract', mc)
         learn_bot.set_option('temperature', config['temperature'])
-        ref_bot.set_option('max_contract', max_contract)
+        ref_bot.set_option('max_contract', mc)
         ref_bot.set_option('temperature', config['temperature'])
 
         recorder = ExperienceRecorder()
@@ -243,7 +244,7 @@ class ExperienceGenerator:
         self._logger.log(f'Stopping {k}')
         w = self._workers.pop(k)
         if w.proc.is_alive():
-            w.ctl_q.put(None)
+            w.ctl_q.put(None, timeout=1)
         w.proc.join(timeout=0.001)
         while w.proc.is_alive():
             if time.time() - stop_time > 15:

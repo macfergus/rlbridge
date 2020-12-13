@@ -4,9 +4,13 @@ import multiprocessing
 import os
 import queue
 import time
+from collections import namedtuple
 
 from .. import bots
 from ..mputil import disable_sigint
+
+
+Worker = namedtuple('Worker', 'ctl_q proc')
 
 
 class WriteableBotPool:
@@ -104,26 +108,41 @@ def do_training(ctl_q, q, state_fname, out_dir, logger, config):
 
 class Trainer:
     def __init__(self, exp_q, state_path, out_dir, logger, config):
-        self._ctl_q = multiprocessing.Queue()
-        self._proc = multiprocessing.Process(
+        self._exp_q = exp_q
+        self._state_path = state_path
+        self._out_dir = out_dir
+        self._logger = logger
+        self._config = config
+
+        self._worker = self._new_worker()
+
+    def _new_worker(self):
+        ctl_q = multiprocessing.Queue()
+        proc = multiprocessing.Process(
             name='trainer',
             target=do_training,
             args=(
-                self._ctl_q,
-                exp_q,
-                state_path,
-                out_dir,
-                logger,
-                config['training']
+                ctl_q,
+                self._exp_q,
+                self._state_path,
+                self._out_dir,
+                self._logger,
+                self._config['training']
             )
         )
+        return Worker(ctl_q=ctl_q, proc=proc)
 
     def start(self):
-        self._proc.start()
+        self._worker.proc.start()
 
     def stop(self):
-        self._ctl_q.put(None)
-        self._proc.join()
+        if self._worker.proc.is_alive():
+            self._worker.ctl_q.put(None)
+        self._worker.proc.join()
 
-    def is_healthy(self):
-        return self._proc.is_alive()
+    def maintain(self):
+        # Restart the trainer process if it died
+        if not self._worker.proc.is_alive():
+            self._logger.log('Restarting trainer')
+            self._worker = self._new_worker()
+            self._worker.proc.start()
