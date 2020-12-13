@@ -1,8 +1,8 @@
 import enum
 
 from ..players import Side
-from .auction import Auction
-from .play import PlayState
+from .auction import Auction, Call
+from .play import Play, PlayState
 
 __all__ = [
     'Action',
@@ -31,6 +31,14 @@ class Action:
     @classmethod
     def make_play(cls, play):
         return Action(play=play)
+
+    @classmethod
+    def make(cls, call_or_play):
+        if isinstance(call_or_play, Call):
+            return Action(call=call_or_play)
+        elif isinstance(call_or_play, Play):
+            return Action(play=call_or_play)
+        raise TypeError(type(call_or_play))
 
     def __str__(self):
         if self.is_call:
