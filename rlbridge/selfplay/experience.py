@@ -103,6 +103,8 @@ def generate_games(
             game_result = simulate_game(
                 learn_bot, ref_bot, ns_recorder=recorder
             )
+            if game_result.declarer is None:
+                continue
             if (
                     game_result.contract_made and
                     game_result.declarer in (Player.north, Player.south)
@@ -124,6 +126,8 @@ def generate_games(
             game_result = simulate_game(
                 ref_bot, learn_bot, ew_recorder=recorder
             )
+            if game_result.declarer is None:
+                continue
             if (
                     game_result.contract_made and
                     game_result.declarer in (Player.east, Player.west)
