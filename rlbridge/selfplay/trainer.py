@@ -12,6 +12,10 @@ class WriteableBotPool:
     def __init__(self, pool_fname, out_dir, logger):
         self.pool_fname = pool_fname
         self.out_dir = out_dir
+        self.bot_dir = os.path.join(self.out_dir, 'bots')
+        if not os.path.exists(self.bot_dir):
+            os.mkdir(self.bot_dir)
+
         init = json.load(open(pool_fname))
         self.ref_fnames = copy.copy(init['ref'])
         self.learn_fname = copy.copy(init['learn'])
@@ -24,7 +28,7 @@ class WriteableBotPool:
         return self.learn_bot
 
     def _save_bot(self, bot):
-        out_fname = os.path.join(self.out_dir, bot.identify())
+        out_fname = os.path.join(self.bot_dir, bot.identify())
         out_fname = out_fname.replace(' ', '_')
         bots.save_bot(bot, out_fname)
         return out_fname
@@ -86,6 +90,7 @@ class TrainerImpl(Loopable):
         )
         hist = self._bot.train(
             self._experience,
+            lr=self._config['lr'],
             use_advantage=self._config['use_advantage']
         )
         self._logger.log(

@@ -14,3 +14,6 @@ disable=
 
 [BASIC]
 good-names=i,j,k,v,of,n,X,x,y,q,mo,p,t
+
+[TYPECHECK]
+ignored-modules=numpy

@@ -264,10 +264,10 @@ class ConvBot(Bot):
             **kwargs
         )
 
-    def train(self, episodes, reinforce_only=False, use_advantage=True):
+    def train(self, episodes, lr=0.1, reinforce_only=False, use_advantage=True):
         if not self._compiled_for_training:
             self.model.compile(
-                optimizer=SGD(lr=0.01, clipnorm=0.5),
+                optimizer=SGD(lr=lr, clipnorm=0.5),
                 loss=[
                     'categorical_crossentropy',
                     'categorical_crossentropy',
