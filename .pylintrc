@@ -8,7 +8,9 @@ disable=
     too-many-instance-attributes,
     too-many-locals,
     too-many-arguments,
-    no-self-use
+    no-self-use,
+    too-many-branches,
+    too-many-statements
 
 [BASIC]
 good-names=i,j,k,of,n,X,x,y,q,mo,p,t

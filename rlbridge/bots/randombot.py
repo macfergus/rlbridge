@@ -21,6 +21,7 @@ class RandomBot(Bot):
             raise UnrecognizedOptionError(key)
 
     def select_action(self, state, recorder=None):
+        _ = recorder
         while True:
             action = random.choice(state.legal_actions())
             if not action.is_call:
@@ -32,7 +33,7 @@ class RandomBot(Bot):
         return action
 
 
-def init(options, metadata):
+def init(_options, metadata):
     return RandomBot(metadata)
 
 

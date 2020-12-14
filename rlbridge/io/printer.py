@@ -18,9 +18,9 @@ def format_scale(scale):
     return ''
 
 
-def pad(s, n):
-    padding = max(0, n - len(s))
-    return s + padding * ' '
+def pad(string, n):
+    padding = max(0, n - len(string))
+    return string + padding * ' '
 
 
 def format_rank(rank):

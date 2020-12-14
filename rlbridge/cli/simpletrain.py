@@ -3,7 +3,7 @@ import time
 
 import yaml
 from tqdm import tqdm
-        
+
 from ..nputil import concat_inplace
 from ..simulate import GameGenerator
 from .command import Command
@@ -35,7 +35,7 @@ class SimpleTrain(Command):
             while total < args.num_games:
                 gen.maintain()
                 try:
-                    ep = q.get(timeout=0.5)
+                    episode = q.get(timeout=0.5)
                     last_recv = time.time()
                 except queue.Empty:
                     time_since_recv = time.time() - last_recv
@@ -51,19 +51,19 @@ class SimpleTrain(Command):
                 t.update()
 
                 if X is None:
-                    X = ep.X.copy()
-                    y_call = ep.y_call.copy()
-                    y_play = ep.y_play.copy()
-                    y_value = ep.y_value.copy()
+                    X = episode.X.copy()
+                    y_call = episode.y_call.copy()
+                    y_play = episode.y_play.copy()
+                    y_value = episode.y_value.copy()
                 else:
-                    concat_inplace(X, ep.X)
-                    concat_inplace(y_call, ep.y_call)
-                    concat_inplace(y_play, ep.y_play)
-                    concat_inplace(y_value, ep.y_value)
-    
+                    concat_inplace(X, episode.X)
+                    concat_inplace(y_call, episode.y_call)
+                    concat_inplace(y_play, episode.y_play)
+                    concat_inplace(y_value, episode.y_value)
+
                 if (
-                    X.shape[0] >= config['training']['chunk_size'] or
-                    total + 1 >= args.num_games
+                        X.shape[0] >= config['training']['chunk_size'] or
+                        total + 1 >= args.num_games
                 ):
                     tqdm.write(f'Training on {X.shape[0]} examples')
                     hist = bot.pretrain(

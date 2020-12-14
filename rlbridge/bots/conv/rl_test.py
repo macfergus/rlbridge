@@ -82,13 +82,13 @@ class RLTest(unittest.TestCase):
             'rewards': [-2, -2],
             'advantages': [0, 0],
         }
-        X_state, y_call, y_play, y_value = prepare_training_data(
+        X, y_call, y_play, y_value = prepare_training_data(
             [episode],
             reinforce_only=False,
             use_advantage=False
         )
 
-        assert_array_equal(episode['states'], X_state)
+        assert_array_equal(episode['states'], X)
         # Call output:
         # First row, we should reinforce the made decision
         assert_array_equal([-2, 0, 0], y_call[0])

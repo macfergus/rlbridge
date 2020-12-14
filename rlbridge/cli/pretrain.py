@@ -4,7 +4,6 @@ from tqdm import tqdm
 
 from ..bots import init_bot, load_bot, save_bot
 from ..nputil import concat_inplace
-from ..players import Player
 from ..simulate import simulate_game
 from .command import Command
 

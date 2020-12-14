@@ -85,7 +85,7 @@ class TrainerImpl(Loopable):
             f'{self._num_games} games'
         )
         hist = self._bot.train(
-            experience,
+            self._experience,
             use_advantage=self._config['use_advantage']
         )
         self._logger.log(
@@ -93,8 +93,8 @@ class TrainerImpl(Loopable):
             f'play_loss {hist["play_loss"]} '
             f'value_loss {hist["value_loss"]}'
         )
-        self._bot.add_games(num_games)
-        self._bot_pool.promote(bot)
+        self._bot.add_games(self._num_games)
+        self._bot_pool.promote(self._bot)
         self._num_games = 0
         self._experience = []
         self._experience_size = 0

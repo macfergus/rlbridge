@@ -43,8 +43,8 @@ class Encoder:
         # Include an extra slot for the new game indicator.
         sequence = np.zeros((num_states + 1, self.DIM))
         sequence[0] = self.encode_new_game()
-        for i, s in enumerate(reverse_states(state)):
-            sequence[i + 1] = self.encode_game_state(s, perspective)
+        for i, cur_state in enumerate(reverse_states(state)):
+            sequence[i + 1] = self.encode_game_state(cur_state, perspective)
         return sequence
 
     def encode_new_game(self):
@@ -132,7 +132,7 @@ class Encoder:
         return action
 
     def encode_game_state(self, state, perspective):
-        s = np.zeros(self.DIM)
+        array = np.zeros(self.DIM)
         players = [
             perspective,
             perspective.lho(),
@@ -147,37 +147,37 @@ class Encoder:
             start_index = self.VISIBLE_CARD_START + 53 * i
             card_array = np.zeros(53)
             if player in cards:
-                for c in cards[player]:
-                    card_array[self.encode_card(c) + 1] = 1
+                for card in cards[player]:
+                    card_array[self.encode_card(card) + 1] = 1
             else:
                 # This player's cards are not currently visible to the
                 # current decider. This lets us distinguish an empty
                 # hand from one that we can't see.
                 card_array[0] = 1
-            s[start_index:start_index + 53] = card_array
+            array[start_index:start_index + 53] = card_array
 
         # Fill in vulnerability bits
         side = perspective.side()
         opposite_side = side.opposite()
         if state.is_vulnerable(side):
-            s[self.DIM_VULNERABILITY] = 1
+            array[self.DIM_VULNERABILITY] = 1
         if state.is_vulnerable(opposite_side):
-            s[self.DIM_VULNERABILITY + 1] = 1
+            array[self.DIM_VULNERABILITY + 1] = 1
 
         # Fill in last action
         if state.prev_action is None:
-            return s
+            return array
         last_actor = state.next_player.rho()
         offset = player_offset[last_actor]
         if state.prev_action.is_call:
             start_index = self.AUCTION_START + 38 * offset
             call_index = self.encode_call(state.prev_action.call)
-            s[start_index + call_index] = 1
+            array[start_index + call_index] = 1
         if state.prev_action.is_play:
             start_index = self.PLAY_START + 52 * offset
             card_index = self.encode_card(state.prev_action.play.card)
-            s[start_index + card_index] = 1
-        return s
+            array[start_index + card_index] = 1
+        return array
 
     def input_shape(self):
         return (self.DIM,)

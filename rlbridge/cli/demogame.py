@@ -43,7 +43,6 @@ class DemoGame(Command):
         )
         p = GamePrinter()
         while not hand.is_over():
-            next_player = hand.next_player
             next_decider = hand.next_decider
             agent = agents[next_decider]
             action = agent.select_action(hand)
