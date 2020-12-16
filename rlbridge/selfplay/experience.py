@@ -90,10 +90,9 @@ def generate_games(
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
 
-        max_c = random.randint(max_contract, 7)
-        learn_bot.set_option('max_contract', max_c)
+        learn_bot.set_option('max_contract', max_contract)
         learn_bot.set_option('temperature', config['temperature'])
-        ref_bot.set_option('max_contract', max_c)
+        ref_bot.set_option('max_contract', max_contract)
         ref_bot.set_option('temperature', config['temperature'])
 
         recorder = ExperienceRecorder()

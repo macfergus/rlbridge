@@ -77,7 +77,7 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
     call_actions = experience['call_actions']
     play_actions = experience['play_actions']
     rewards = experience['rewards'].reshape((-1, 1))
-    advantages = np.clip(experience['advantages'].reshape((-1, 1)), -2, 2)
+    advantages = experience['advantages'].reshape((-1, 1))
 
     calls_made = experience['calls_made'].reshape((-1, 1))
     plays_made = experience['plays_made'].reshape((-1, 1))
