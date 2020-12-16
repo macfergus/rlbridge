@@ -3,6 +3,7 @@ import sys
 
 from . import benchmark
 from . import demogame
+from . import elo
 from . import evaluate
 from . import initbot
 from . import pretrain
@@ -18,6 +19,7 @@ def cli():
     commands = [
         benchmark.Benchmark(),
         demogame.DemoGame(),
+        elo.Elo(),
         evaluate.Evaluate(),
         initbot.InitBot(),
         pretrain.Pretrain(),
