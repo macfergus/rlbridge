@@ -208,12 +208,20 @@ class ExperienceGenerator:
             self._logger.log(f'Made {made} contracts over {n_hands} hands')
             pct_made = np.mean(self._contract_history)
             if (
-                    pct_made >= self._config['target_contracts_made'] and
+                    pct_made >= self._config['target_contracts_upper'] and
                     self._max_contract < 7
             ):
                 self._max_contract += 1
                 self._logger.log(
                     f'Raising max contract to {self._max_contract}'
+                )
+            if (
+                    pct_made < self._config['target_contracts_lower'] and
+                    self._max_contract > 1
+            ):
+                self._max_contract -= 1
+                self._logger.log(
+                    f'Dropping max contract to {self._max_contract}'
                 )
             self._contract_history = []
 

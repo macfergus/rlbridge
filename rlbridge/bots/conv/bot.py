@@ -276,7 +276,7 @@ class ConvBot(Bot):
                 loss_weights=[
                     1.0,
                     1.0,
-                    0.05,
+                    0.1,
                 ]
             )
             self._compiled_for_training = True
