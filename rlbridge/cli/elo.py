@@ -35,4 +35,4 @@ class Elo(Command):
             reverse=True
         )
         for rating, bot in sorted_ratings:
-            print(bot, rating)
+            print(bot, int(rating))

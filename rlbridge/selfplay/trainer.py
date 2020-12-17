@@ -9,12 +9,14 @@ from ..mputil import Loopable, LoopingProcess
 
 
 class WriteableBotPool:
-    def __init__(self, pool_fname, out_dir, logger):
+    def __init__(self, pool_fname, out_dir, bots_to_keep, logger):
         self.pool_fname = pool_fname
         self.out_dir = out_dir
         self.bot_dir = os.path.join(self.out_dir, 'bots')
         if not os.path.exists(self.bot_dir):
             os.mkdir(self.bot_dir)
+
+        self._bots_to_keep = int(bots_to_keep)
 
         init = json.load(open(pool_fname))
         self.ref_fnames = copy.copy(init['ref'])
@@ -37,7 +39,7 @@ class WriteableBotPool:
         new_bot_fname = self._save_bot(new_best_bot)
         # Keep the last 5 promoted bots
         self.ref_fnames.append(new_bot_fname)
-        self.ref_fnames = self.ref_fnames[-5:]
+        self.ref_fnames = self.ref_fnames[-self._bots_to_keep:]
         self.logger.log(f'Ref bots are: {self.ref_fnames}')
         self.learn_fname = new_bot_fname
 
@@ -52,7 +54,9 @@ class WriteableBotPool:
 
 class TrainerImpl(Loopable):
     def __init__(self, q, state_fname, out_dir, logger, config):
-        self._bot_pool = WriteableBotPool(state_fname, out_dir, logger)
+        self._bot_pool = WriteableBotPool(
+            state_fname, out_dir, config['training']['bots_to_keep'], logger
+        )
         self._bot = self._bot_pool.get_learn_bot()
         self._logger = logger
         self._config = config['training']
@@ -64,6 +68,8 @@ class TrainerImpl(Loopable):
         self._experience_size = 0
         self._experience = []
         self._last_log = time.time()
+
+        self._chunks_done = 0
 
     def run_once(self):
         try:
@@ -99,7 +105,11 @@ class TrainerImpl(Loopable):
             f'value_loss {hist["value_loss"]}'
         )
         self._bot.add_games(self._num_games)
-        self._bot_pool.promote(self._bot)
+        self._chunks_done += 1
+        if self._chunks_done >= self._config['chunks_per_promote']:
+            self._logger.log('Promoting!')
+            self._chunks_done = 0
+            self._bot_pool.promote(self._bot)
         self._num_games = 0
         self._experience = []
         self._experience_size = 0

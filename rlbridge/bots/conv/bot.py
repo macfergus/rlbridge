@@ -288,7 +288,7 @@ class ConvBot(Bot):
         history = self.model.fit(
             x_state,
             [y_call, y_play, y_value],
-            batch_size=512,
+            batch_size=256,
             epochs=1,
             verbose=0
         )

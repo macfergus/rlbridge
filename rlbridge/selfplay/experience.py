@@ -37,7 +37,6 @@ class BotPool:
         new_learner = False
         data = json.load(open(self._fname))
         if self._ref_bot_names != data['ref']:
-            #self.logger.log('Updating reference bot pool')
             self._ref_bot_names = copy.copy(data['ref'])
             self._ref_bots = []
             self._ref_weights = []
@@ -45,21 +44,13 @@ class BotPool:
                 ref_bot = load_bot(bot_file)
                 self._ref_bots.append(ref_bot)
                 self._ref_weights.append(i + 1)
-                #self.logger.log('=> Loaded {} with weight {}'.format(
-                #    ref_bot.identify(),
-                #    i + 1
-                #))
             self._ref_weights = (
                 np.array(self._ref_weights) / np.sum(self._ref_weights)
             )
         if self._learn_bot_name != data['learn']:
             new_learner = True
-            self.logger.log('Updating learn bot')
             self._learn_bot_name = copy.copy(data['learn'])
             self._learn_bot = load_bot(self._learn_bot_name)
-            self.logger.log('=> Loaded {} as new learner'.format(
-                self._learn_bot.identify()
-            ))
         return new_learner
 
     def select_ref_bot(self):
@@ -213,7 +204,7 @@ class ExperienceGenerator:
                 break
         made = np.sum(self._contract_history)
         n_hands = len(self._contract_history)
-        if n_hands >= 500:
+        if n_hands >= 1000:
             self._logger.log(f'Made {made} contracts over {n_hands} hands')
             pct_made = np.mean(self._contract_history)
             if (

@@ -44,9 +44,9 @@ def calculate_ratings(matches, anchor=None):
         nll_results, guess,
         args=(winners, losers),
         bounds=bounds,
+        method='TNC',
         options={
-            'maxfun': 100000,
-            'maxiter': 10000,
+            'maxiter': 1000000,
         }
     )
     assert result.success

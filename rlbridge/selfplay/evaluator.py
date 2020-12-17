@@ -5,6 +5,7 @@ import time
 import numpy as np
 
 from .. import bots
+from .. import elo
 from .. import kerasutil
 from ..mputil import Loopable, LoopingProcess
 from ..players import Player
@@ -37,6 +38,8 @@ class EvaluatorImpl(Loopable):
             )
         ''')
         self._conn.commit()
+
+        self._game_queue = []
 
     def _save_result(
             self, bot1, bot2, num_hands, bot1_points, bot2_points,
@@ -83,23 +86,79 @@ class EvaluatorImpl(Loopable):
                 weights[bot_name] += count
         return weights
 
-    def _select_bots(self):
-        bot_names = []
-        for fname in os.listdir(self._bot_dir):
-            bot_names.append(fname)
+    def _calc_elo(self):
+        cursor = self._conn.execute('''
+            SELECT bot1, bot2, bot1_points, bot2_points FROM matches
+        ''')
+        bots = set()
+        matches = []
+        for bot1, bot2, bot1_points, bot2_points in cursor:
+            bots.add(bot1)
+            bots.add(bot2)
+            if bot1_points > bot2_points:
+                matches.append(elo.Match(winner=bot1, loser=bot2))
+            if bot2_points > bot1_points:
+                matches.append(elo.Match(winner=bot2, loser=bot1))
+        if not matches:
+            self._logger.log('no matches')
+            return {}
+        first_bot = sorted(bots)[0]
+        self._logger.log('calculate ratings')
+        return elo.calculate_ratings(matches, anchor=first_bot)
 
-        if len(bot_names) < 2:
-            raise NotEnoughBots()
-
+    def _extend_queue_by_elo(self, bot_names):
         weights = self._get_bot_weights(bot_names)
         weight_array = np.array([weights[name] for name in bot_names])
-        probs = 1. / (weight_array + np.ones_like(weight_array))
-        probs = probs / np.sum(probs)
-        n_bots = probs.shape[0]
+        n_bots = weight_array.shape[0]
+        idx = np.argmin(weight_array)
 
-        idx1, idx2 = np.random.choice(n_bots, size=2, p=probs, replace=False)
-        bot1_fname = bot_names[idx1]
-        bot2_fname = bot_names[idx2]
+        ratings = self._calc_elo()
+        if not ratings:
+            bot1, bot2 = random.sample(bot_names, 2)
+            self._game_queue.append((bot1, bot2))
+            return
+
+        base_rating = ratings.pop(bot_names[idx], 1000)
+        self._logger.log(f'evaluating {bot_names[idx]} elo {base_rating}')
+        elo_diff = [
+            (abs(rating - base_rating), bot)
+            for bot, rating in ratings.items()
+            if bot != bot_names[idx]
+        ]
+        elo_diff.sort()
+        diff_weights = []
+        for i, (diff, bot) in enumerate(elo_diff):
+            diff_weights.append(1. / (i + 1))
+        diff_weights = np.array(diff_weights)
+        diff_weights /= np.sum(diff_weights)
+
+        if len(elo_diff) > 10:
+            opponents = np.random.choice(
+                len(elo_diff),
+                size=10,
+                replace=False,
+                p=diff_weights
+            )
+        else:
+            opponents = list(range(len(elo_diff)))
+        for j in opponents:
+            self._game_queue.append((bot_names[idx], elo_diff[j][1]))
+
+    def _select_bots(self):
+        if not self._game_queue:
+            bot_names = []
+            for fname in os.listdir(self._bot_dir):
+                bot_names.append(fname)
+
+            if len(bot_names) < 2:
+                raise NotEnoughBots()
+
+            if len(bot_names) == 2:
+                self._game_queue.append((bot_names[0], bot_names[1]))
+            else:
+                self._extend_queue_by_elo(bot_names)
+
+        bot1_fname, bot2_fname = self._game_queue.pop(0)
         path1 = os.path.join(self._bot_dir, bot1_fname)
         path2 = os.path.join(self._bot_dir, bot2_fname)
         return bots.load_bot(path1), bots.load_bot(path2)
