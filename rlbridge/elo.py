@@ -46,13 +46,14 @@ def calculate_ratings(matches, anchor=None):
         bounds=bounds,
         options={
             'maxiter': 1000000,
+            'maxfun': 5000000,
         }
     )
     assert result.success
 
     abstract_ratings = np.concatenate([np.ones(1), result.x])
     elo_ratings = 400.0 * np.log10(abstract_ratings)
-    if anchor is not None:
+    if anchor is not None and anchor in index:
         anchor_rating = elo_ratings[index[anchor]]
         elo_ratings += 1000 - anchor_rating
     else:
