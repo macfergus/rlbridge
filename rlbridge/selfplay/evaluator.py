@@ -1,4 +1,5 @@
 import os
+import random
 import sqlite3
 import time
 
@@ -92,11 +93,11 @@ class EvaluatorImpl(Loopable):
         cursor = self._conn.execute('''
             SELECT bot1, bot2, bot1_points, bot2_points FROM matches
         ''')
-        bots = set()
+        botset = set()
         matches = []
         for bot1, bot2, bot1_points, bot2_points in cursor:
-            bots.add(bot1)
-            bots.add(bot2)
+            botset.add(bot1)
+            botset.add(bot2)
             if bot1_points > bot2_points:
                 matches.append(elo.Match(winner=bot1, loser=bot2))
             if bot2_points > bot1_points:
@@ -104,14 +105,13 @@ class EvaluatorImpl(Loopable):
         if not matches:
             self._logger.log('no matches')
             return {}
-        first_bot = sorted(bots)[0]
+        first_bot = sorted(botset)[0]
         self._logger.log('calculate ratings')
         return elo.calculate_ratings(matches, anchor=first_bot)
 
     def _extend_queue_by_elo(self, bot_names):
         weights = self._get_bot_weights(bot_names)
         weight_array = np.array([weights[name] for name in bot_names])
-        n_bots = weight_array.shape[0]
         idx = np.argmin(weight_array)
 
         ratings = self._calc_elo()
@@ -129,7 +129,7 @@ class EvaluatorImpl(Loopable):
         ]
         elo_diff.sort()
         diff_weights = []
-        for i, (diff, bot) in enumerate(elo_diff):
+        for i, (_diff, bot) in enumerate(elo_diff):
             diff_weights.append(1. / (i + 1))
         diff_weights = np.array(diff_weights)
         diff_weights /= np.sum(diff_weights)
@@ -238,8 +238,6 @@ class Evaluator:
         self._out_dir = out_dir
         self._config = config
         self._logger = logger
-
-    def start(self):
         self._proc = LoopingProcess(
             'evaluator',
             EvaluatorImpl,
@@ -250,6 +248,8 @@ class Evaluator:
             },
             restart=True
         )
+
+    def start(self):
         self._proc.start()
 
     def stop(self):

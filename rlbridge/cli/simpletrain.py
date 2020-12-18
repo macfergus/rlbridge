@@ -4,6 +4,7 @@ import time
 import yaml
 from tqdm import tqdm
 
+from ..bots import load_bot, save_bot
 from ..nputil import concat_inplace
 from ..simulate import GameGenerator
 from .command import Command
@@ -25,7 +26,6 @@ class SimpleTrain(Command):
 
         gen.start()
 
-        from ..bots import load_bot, save_bot
         bot = load_bot(args.bot_in)
 
         i = 0
