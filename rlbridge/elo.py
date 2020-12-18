@@ -44,7 +44,6 @@ def calculate_ratings(matches, anchor=None):
         nll_results, guess,
         args=(winners, losers),
         bounds=bounds,
-        method='TNC',
         options={
             'maxiter': 1000000,
         }

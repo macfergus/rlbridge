@@ -22,7 +22,9 @@ class EvaluatorImpl(Loopable):
         self._config = config
         kerasutil.set_tf_options(disable_gpu=True)
 
-        self._bot_dir = os.path.join(out_dir, 'bots')
+        self._bot_dir = os.path.join(out_dir, 'eval')
+        if not os.path.exists(self._bot_dir):
+            os.mkdir(self._bot_dir)
         self._db_file = os.path.join(out_dir, 'evaluation.db')
         self._conn = sqlite3.connect(self._db_file)
 

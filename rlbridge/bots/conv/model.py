@@ -1,6 +1,8 @@
 from keras import Model
 from keras.layers import BatchNormalization, Conv1D, Dense, Flatten, Input
 from keras.optimizers import Adam
+from tensorflow.keras.losses import CategoricalCrossentropy
+from tensorflow.keras.regularizers import L2
 
 
 def construct_model(
@@ -29,7 +31,7 @@ def construct_model(
     # 38 -> pass
     call_hidden = Dense(hidden_size, activation='relu')(game_state)
     call_output = Dense(
-        39, activation='softmax', name='call_output'
+        39, name='call_output', activity_regularizer=L2(0.01)
     )(call_hidden)
 
     # Play output (53,)
@@ -37,7 +39,7 @@ def construct_model(
     # 1..52 -> 2C .. AS
     play_hidden = Dense(hidden_size, activation='relu')(game_state)
     play_output = Dense(
-        53, activation='softmax', name='play_output'
+        53, name='play_output', activity_regularizer=L2(0.01)
     )(play_hidden)
 
     value_hidden = Dense(hidden_size, activation='relu')(game_state)
@@ -56,14 +58,14 @@ def construct_model(
     model.compile(
         optimizer=Adam(clipnorm=0.5),
         loss=[
-            'categorical_crossentropy',
-            'categorical_crossentropy',
+            CategoricalCrossentropy(from_logits=True),
+            CategoricalCrossentropy(from_logits=True),
             'mse'
         ],
         loss_weights=[
             1.0,
             1.0,
-            0.02,
+            0.1,
         ]
     )
     return model

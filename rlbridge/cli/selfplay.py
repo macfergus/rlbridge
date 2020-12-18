@@ -1,12 +1,15 @@
 import json
 import os
+import shutil
 import time
 
 import yaml
 
-from .command import Command
+from .. import kerasutil
+from ..bots import load_bot, save_bot
 from ..mputil import MPLogManager
 from ..selfplay import SelfPlayManager
+from .command import Command
 
 
 class SelfPlay(Command):
@@ -18,11 +21,24 @@ class SelfPlay(Command):
     def run(self, args):
         bot_state_path = os.path.join(args.work_dir, 'bot_status')
         if args.start_from:
+            kerasutil.set_tf_options(disable_gpu=True)
+            start_bot = load_bot(args.start_from)
+            bot_dir = os.path.join(args.work_dir, 'bots')
+            if not os.path.exists(bot_dir):
+                os.mkdir(bot_dir)
+            dest_path = os.path.join(bot_dir, start_bot.identify())
+            save_bot(start_bot, dest_path)
+            del start_bot
+
             with open(bot_state_path, 'w') as outf:
                 outf.write(json.dumps({
-                    'learn': args.start_from,
-                    'ref': [args.start_from],
+                    'learn': dest_path,
+                    'ref': [dest_path],
                 }))
+            eval_dir = os.path.join(args.work_dir, 'eval')
+            if not os.path.exists(eval_dir):
+                os.mkdir(eval_dir)
+            shutil.copy(dest_path, eval_dir)
 
         if not os.path.exists(bot_state_path):
             print(f'Bot control file {bot_state_path} does not exist.')

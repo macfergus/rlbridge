@@ -1,5 +1,6 @@
 import numpy as np
 from keras.optimizers import SGD
+from tensorflow.keras.losses import CategoricalCrossentropy
 
 from ...game import Action, Phase
 from ...players import Player
@@ -12,8 +13,14 @@ __all__ = [
 ]
 
 
-def sample(p, temperature):
-    eps = 1e-5
+def softmax(x):
+    exp_x = np.exp(x)
+    return exp_x / np.sum(exp_x)
+
+
+def sample(logits, temperature):
+    p = softmax(logits)
+    eps = 1e-4
     min_temp = 0.001
     if temperature < min_temp:
         return np.argsort(p)[::-1]
@@ -245,8 +252,8 @@ class ConvBot(Bot):
             self.model.compile(
                 optimizer='adam',
                 loss=[
-                    'categorical_crossentropy',
-                    'categorical_crossentropy',
+                    CategoricalCrossentropy(from_logits=True),
+                    CategoricalCrossentropy(from_logits=True),
                     'mse'
                 ],
                 loss_weights=[
@@ -269,8 +276,8 @@ class ConvBot(Bot):
             self.model.compile(
                 optimizer=SGD(lr=lr, clipnorm=0.5),
                 loss=[
-                    'categorical_crossentropy',
-                    'categorical_crossentropy',
+                    CategoricalCrossentropy(from_logits=True),
+                    CategoricalCrossentropy(from_logits=True),
                     'mse'
                 ],
                 loss_weights=[

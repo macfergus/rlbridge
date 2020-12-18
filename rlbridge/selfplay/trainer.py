@@ -4,6 +4,7 @@ import os
 import queue
 import time
 
+import numpy as np
 from .. import bots
 from ..mputil import Loopable, LoopingProcess
 
@@ -54,6 +55,7 @@ class WriteableBotPool:
 
 class TrainerImpl(Loopable):
     def __init__(self, q, state_fname, out_dir, logger, config):
+        self._out_dir = out_dir
         self._bot_pool = WriteableBotPool(
             state_fname, out_dir, config['training']['bots_to_keep'], logger
         )
@@ -110,9 +112,21 @@ class TrainerImpl(Loopable):
             self._logger.log('Promoting!')
             self._chunks_done = 0
             self._bot_pool.promote(self._bot)
+            if np.random.random() < self._config['eval_frac']:
+                self._logger.log('and marking for evaluation')
+                self._save_bot_for_eval(self._bot)
+
         self._num_games = 0
         self._experience = []
         self._experience_size = 0
+
+    def _save_bot_for_eval(self, bot):
+        eval_dir = os.path.join(self._out_dir, 'eval')
+        if not os.path.exists(eval_dir):
+            os.mkdir(eval_dir)
+        out_fname = os.path.join(eval_dir, bot.identify())
+        out_fname = out_fname.replace(' ', '_')
+        bots.save_bot(bot, out_fname)
 
 
 class Trainer:
