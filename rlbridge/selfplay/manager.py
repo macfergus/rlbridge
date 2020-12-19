@@ -7,25 +7,24 @@ from .trainer import Trainer
 __all__ = ['SelfPlayManager']
 
 class SelfPlayManager:
-    def __init__(self, state_path, out_dir, config, logger):
+    def __init__(self, workspace, config, logger):
         self.config = config
         self.logger = logger
         self._experience_q = multiprocessing.Queue()
         self._worker_pool = ExperienceGenerator(
             exp_q=self._experience_q,
-            state_path=state_path,
+            workspace=workspace,
             logger=self.logger,
             config=self.config
         )
         self._trainer = Trainer(
             exp_q=self._experience_q,
-            state_path=state_path,
-            out_dir=out_dir,
+            workspace=workspace,
             config=config,
             logger=self.logger
         )
         self._evaluator = Evaluator(
-            out_dir=out_dir,
+            workspace=workspace,
             config=config,
             logger=self.logger
         )

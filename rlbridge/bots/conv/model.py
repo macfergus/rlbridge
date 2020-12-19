@@ -1,6 +1,6 @@
 from keras import Model
-from keras.layers import BatchNormalization, Conv1D, Dense, Flatten, Input
-from keras.optimizers import Adam
+from keras.layers import Activation, BatchNormalization, Conv1D, Dense, Flatten, Input
+from keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.regularizers import L2
 
@@ -11,14 +11,16 @@ def construct_model(
         kernel_size=13,
         num_layers=5,
         state_size=64,
-        hidden_size=64
+        hidden_size=64,
+        regularization=0.01
 ):
     game_input = Input(input_shape)
 
     y = game_input
     for _ in range(num_layers):
-        y = Conv1D(num_filters, kernel_size, activation='relu')(y)
+        y = Conv1D(num_filters, kernel_size, padding='same')(y)
         y = BatchNormalization()(y)
+        y = Activation('relu')(y)
 
     game_state = Dense(state_size, activation='relu')(Flatten()(y))
 
@@ -29,20 +31,32 @@ def construct_model(
     # 36 -> double
     # 37 -> redouble
     # 38 -> pass
-    call_hidden = Dense(hidden_size, activation='relu')(game_state)
+    call_hidden = Dense(
+        hidden_size,
+        activation='relu',
+        kernel_regularizer=L2(regularization)
+    )(game_state)
     call_output = Dense(
-        39, name='call_output', activity_regularizer=L2(0.01)
+        39, name='call_output', activity_regularizer=L2(regularization)
     )(call_hidden)
 
     # Play output (53,)
     # 0 -> not my turn
     # 1..52 -> 2C .. AS
-    play_hidden = Dense(hidden_size, activation='relu')(game_state)
+    play_hidden = Dense(
+        hidden_size,
+        activation='relu',
+        kernel_regularizer=L2(regularization)
+    )(game_state)
     play_output = Dense(
         53, name='play_output', activity_regularizer=L2(0.01)
     )(play_hidden)
 
-    value_hidden = Dense(hidden_size, activation='relu')(game_state)
+    value_hidden = Dense(
+        hidden_size,
+        activation='relu',
+        kernel_regularizer=L2(regularization)
+    )(game_state)
     value_output = Dense(1, name='value_output')(value_hidden)
 
     model = Model(
@@ -56,7 +70,7 @@ def construct_model(
         ]
     )
     model.compile(
-        optimizer=Adam(clipnorm=0.5),
+        optimizer=SGD(clipnorm=0.5),
         loss=[
             CategoricalCrossentropy(from_logits=True),
             CategoricalCrossentropy(from_logits=True),

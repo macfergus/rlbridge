@@ -146,10 +146,10 @@ def generate_games(
 
 
 class ExperienceGenerator:
-    def __init__(self, exp_q, state_path, logger, config):
+    def __init__(self, exp_q, workspace, config, logger):
         self.recv_queue = exp_q
         self._stat_queue = multiprocessing.Queue()
-        self._bot_fname = state_path
+        self._workspace = workspace
         self._logger = logger
         self._config = config['self_play']
         self._worker_idx = 0
@@ -176,7 +176,8 @@ class ExperienceGenerator:
                     self.recv_queue,
                     self._stat_queue,
                     self._max_contract,
-                    self._bot_fname,
+                    self._workspace.state_file,
+
                     self._logger,
                     self._config
                 )

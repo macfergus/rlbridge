@@ -18,16 +18,13 @@ class NotEnoughBots(Exception):
 
 
 class EvaluatorImpl(Loopable):
-    def __init__(self, out_dir, logger, config):
+    def __init__(self, workspace, logger, config):
+        self._workspace = workspace
         self._logger = logger
         self._config = config
         kerasutil.set_tf_options(disable_gpu=True)
 
-        self._bot_dir = os.path.join(out_dir, 'eval')
-        if not os.path.exists(self._bot_dir):
-            os.mkdir(self._bot_dir)
-        self._db_file = os.path.join(out_dir, 'evaluation.db')
-        self._conn = sqlite3.connect(self._db_file)
+        self._conn = sqlite3.connect(self._workspace.eval_db_file)
 
         self._conn.execute('''
             CREATE TABLE IF NOT EXISTS matches (
@@ -149,7 +146,7 @@ class EvaluatorImpl(Loopable):
     def _select_bots(self):
         if not self._game_queue:
             bot_names = []
-            for fname in os.listdir(self._bot_dir):
+            for fname in os.listdir(self._workspace.eval_dir):
                 bot_names.append(fname)
 
             if len(bot_names) < 2:
@@ -161,8 +158,8 @@ class EvaluatorImpl(Loopable):
                 self._extend_queue_by_elo(bot_names)
 
         bot1_fname, bot2_fname = self._game_queue.pop(0)
-        path1 = os.path.join(self._bot_dir, bot1_fname)
-        path2 = os.path.join(self._bot_dir, bot2_fname)
+        path1 = os.path.join(self._workspace.eval_dir, bot1_fname)
+        path2 = os.path.join(self._workspace.eval_dir, bot2_fname)
         return bots.load_bot(path1), bots.load_bot(path2)
 
     def run_once(self):
@@ -234,15 +231,15 @@ class EvaluatorImpl(Loopable):
 
 
 class Evaluator:
-    def __init__(self, out_dir, config, logger):
-        self._out_dir = out_dir
+    def __init__(self, workspace, config, logger):
+        self._workspace = workspace
         self._config = config
         self._logger = logger
         self._proc = LoopingProcess(
             'evaluator',
             EvaluatorImpl,
             kwargs={
-                'out_dir': self._out_dir,
+                'workspace': self._workspace,
                 'logger': self._logger,
                 'config': self._config['evaluation'],
             },

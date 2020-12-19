@@ -1,20 +1,43 @@
 import sqlite3
 from collections import namedtuple
 
+import numpy as np
+from matplotlib import pyplot as plt
+
 from .. import elo
+from ..workspace import open_workspace
 from .command import Command
 
 
 Match = namedtuple('Match', 'winner loser')
 
 
+def plot_ratings(ratings, out_fname):
+    pairs = []
+    for bot_name, rating in ratings.items():
+        n_games = int(bot_name.split('_')[-1])
+        pairs.append((n_games, rating))
+    pairs.sort()
+    xs = np.array([n_games for n_games, _ in pairs])
+    ys = np.array([rating for _, rating in pairs])
+    smooth_ys = np.convolve(ys, [1, 1, 1, 1, 1], 'valid') / 5
+    plt.xlabel('num games')
+    plt.ylabel('elo (1000 = random)')
+    plt.plot(xs, ys, color='b', alpha=0.2)
+    plt.plot(xs[2:-2], smooth_ys, color='b')
+    plt.grid()
+    plt.savefig(out_fname, dpi=100)
+
+
 class Elo(Command):
     def register_arguments(self, parser):
         parser.add_argument('--goal', default='points')
-        parser.add_argument('eval_db_file')
+        parser.add_argument('--plot')
+        parser.add_argument('run_id')
 
     def run(self, args):
-        conn = sqlite3.connect(args.eval_db_file)
+        workspace = open_workspace(args.run_id)
+        conn = sqlite3.connect(workspace.eval_db_file)
         cursor = conn.execute('''
             SELECT
                 bot1, bot2,
@@ -53,3 +76,6 @@ class Elo(Command):
         print(f'Elo ratings with goal {args.goal}')
         for rating, bot in sorted_ratings:
             print(bot, int(rating))
+
+        if args.plot:
+            plot_ratings(ratings, args.plot)

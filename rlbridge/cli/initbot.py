@@ -28,4 +28,5 @@ class InitBot(Command):
             metadata.update(json.loads(args.metadata))
 
         bot = bots.init_bot(args.bot_type, options, metadata)
+        print(bot.model.summary())
         bots.save_bot(bot, args.output_file)

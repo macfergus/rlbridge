@@ -10,16 +10,11 @@ from ..mputil import Loopable, LoopingProcess
 
 
 class WriteableBotPool:
-    def __init__(self, pool_fname, out_dir, bots_to_keep, logger):
-        self.pool_fname = pool_fname
-        self.out_dir = out_dir
-        self.bot_dir = os.path.join(self.out_dir, 'bots')
-        if not os.path.exists(self.bot_dir):
-            os.mkdir(self.bot_dir)
-
+    def __init__(self, workspace, bots_to_keep, logger):
+        self._workspace = workspace
         self._bots_to_keep = int(bots_to_keep)
 
-        init = json.load(open(pool_fname))
+        init = json.load(open(self._workspace.state_file))
         self.ref_fnames = copy.copy(init['ref'])
         self.learn_fname = copy.copy(init['learn'])
 
@@ -30,34 +25,28 @@ class WriteableBotPool:
     def get_learn_bot(self):
         return self.learn_bot
 
-    def _save_bot(self, bot):
-        out_fname = os.path.join(self.bot_dir, bot.identify())
-        out_fname = out_fname.replace(' ', '_')
-        bots.save_bot(bot, out_fname)
-        return out_fname
-
     def promote(self, new_best_bot):
-        new_bot_fname = self._save_bot(new_best_bot)
+        new_bot_fname = self._workspace.store_bot(new_best_bot)
         # Keep the last 5 promoted bots
         self.ref_fnames.append(new_bot_fname)
         self.ref_fnames = self.ref_fnames[-self._bots_to_keep:]
         self.logger.log(f'Ref bots are: {self.ref_fnames}')
         self.learn_fname = new_bot_fname
 
-        tmpfname = self.pool_fname + '.tmp'
+        tmpfname = self._workspace.state_file + '.tmp'
         with open(tmpfname, 'w') as outf:
             outf.write(json.dumps({
                 'ref': self.ref_fnames,
                 'learn': self.learn_fname,
             }))
-        os.rename(tmpfname, self.pool_fname)
+        os.rename(tmpfname, self._workspace.state_file)
 
 
 class TrainerImpl(Loopable):
-    def __init__(self, q, state_fname, out_dir, logger, config):
-        self._out_dir = out_dir
+    def __init__(self, q, workspace, logger, config):
+        self._workspace = workspace
         self._bot_pool = WriteableBotPool(
-            state_fname, out_dir, config['training']['bots_to_keep'], logger
+            self._workspace, config['training']['bots_to_keep'], logger
         )
         self._bot = self._bot_pool.get_learn_bot()
         self._logger = logger
@@ -72,6 +61,8 @@ class TrainerImpl(Loopable):
         self._last_log = time.time()
 
         self._chunks_done = 0
+
+        self._accumulator = 0.0
 
     def run_once(self):
         try:
@@ -112,33 +103,26 @@ class TrainerImpl(Loopable):
             self._logger.log('Promoting!')
             self._chunks_done = 0
             self._bot_pool.promote(self._bot)
-            if np.random.random() < self._config['eval_frac']:
+            self._accumulator += self._config['eval_frac']
+            if self._accumulator >= 1.0:
                 self._logger.log('and marking for evaluation')
-                self._save_bot_for_eval(self._bot)
+                self._workspace.store_bot_for_eval(self._bot)
+                self._accumulator -= 1.0
 
         self._num_games = 0
         self._experience = []
         self._experience_size = 0
 
-    def _save_bot_for_eval(self, bot):
-        eval_dir = os.path.join(self._out_dir, 'eval')
-        if not os.path.exists(eval_dir):
-            os.mkdir(eval_dir)
-        out_fname = os.path.join(eval_dir, bot.identify())
-        out_fname = out_fname.replace(' ', '_')
-        bots.save_bot(bot, out_fname)
-
 
 class Trainer:
-    def __init__(self, exp_q, state_path, out_dir, logger, config):
+    def __init__(self, exp_q, workspace, logger, config):
         self._exp_q = exp_q
         self._proc = LoopingProcess(
             'trainer',
             TrainerImpl,
             kwargs={
                 'q': self._exp_q,
-                'state_fname': state_path,
-                'out_dir': out_dir,
+                'workspace': workspace,
                 'logger': logger,
                 'config': config,
             },
