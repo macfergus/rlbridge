@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from .. import elo
+from .. import nputil
 from ..workspace import open_workspace
 from .command import Command
 
@@ -20,11 +21,11 @@ def plot_ratings(ratings, out_fname):
     pairs.sort()
     xs = np.array([n_games for n_games, _ in pairs])
     ys = np.array([rating for _, rating in pairs])
-    smooth_ys = np.convolve(ys, [1, 1, 1, 1, 1], 'valid') / 5
+    smooth_ys = nputil.smooth(ys, 7, width=2)
     plt.xlabel('num games')
     plt.ylabel('elo (1000 = random)')
     plt.plot(xs, ys, color='b', alpha=0.2)
-    plt.plot(xs[2:-2], smooth_ys, color='b')
+    plt.plot(xs, smooth_ys, color='b')
     plt.grid()
     plt.savefig(out_fname, dpi=100)
 
