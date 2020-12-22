@@ -55,8 +55,8 @@ def get_reward_points(game_result, perspective):
         # This can only happen if there is no contract. Impose a
         # giant penalty to get out of the equilibrium where no one
         # tries to bid.
-        reward = -10000
-    reward /= 500
+        reward = -100
+    reward /= 100
     return reward
 
 

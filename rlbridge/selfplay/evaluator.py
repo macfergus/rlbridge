@@ -41,6 +41,9 @@ class EvaluatorImpl(Loopable):
 
         self._game_queue = []
 
+        self._ratings = {}
+        self._last_elo_update = 0
+
     def _save_result(
             self, bot1, bot2, num_hands, bot1_points, bot2_points,
             bot1_contracts, bot2_contracts
@@ -106,22 +109,32 @@ class EvaluatorImpl(Loopable):
         self._logger.log('calculate ratings')
         return elo.calculate_ratings(matches, anchor=first_bot)
 
+    def _need_new_ratings(self):
+        if not self._ratings:
+            return True
+        now = time.time()
+        if now - self._last_elo_update > 450:
+            return True
+        return False
+
     def _extend_queue_by_elo(self, bot_names):
         weights = self._get_bot_weights(bot_names)
         weight_array = np.array([weights[name] for name in bot_names])
         idx = np.argmin(weight_array)
 
-        ratings = self._calc_elo()
-        if not ratings:
+        if self._need_new_ratings():
+            self._ratings = self._calc_elo()
+            self._last_elo_update = time.time()
+        if not self._ratings:
             bot1, bot2 = random.sample(bot_names, 2)
             self._game_queue.append((bot1, bot2))
             return
 
-        base_rating = ratings.pop(bot_names[idx], 1000)
+        base_rating = self._ratings.pop(bot_names[idx], 1000)
         self._logger.log(f'evaluating {bot_names[idx]} elo {base_rating}')
         elo_diff = [
             (abs(rating - base_rating), bot)
-            for bot, rating in ratings.items()
+            for bot, rating in self._ratings.items()
             if bot != bot_names[idx]
         ]
         elo_diff.sort()

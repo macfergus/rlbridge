@@ -12,13 +12,21 @@ __all__ = [
 Match = namedtuple('Match', 'winner loser')
 
 
+ELO_1000 = 1000.0 / 400.0
+
+
 def nll_results(ratings, winners, losers):
-    all_ratings = np.concatenate([np.ones(1), ratings])
-    winner_ratings = all_ratings[winners]
-    loser_ratings = all_ratings[losers]
+    all_ratings = np.concatenate([ELO_1000 * np.ones(1), ratings])
+    winner_ratings = np.power(10.0, all_ratings[winners])
+    loser_ratings = np.power(10.0, all_ratings[losers])
     log_p_wins = np.log(winner_ratings / (winner_ratings + loser_ratings))
     log_likelihood = np.sum(log_p_wins)
-    return -1 * log_likelihood
+
+    baseline = ELO_1000 * np.ones_like(all_ratings)
+    diff = all_ratings - baseline
+    diff2 = diff * diff
+
+    return -1 * log_likelihood + 0.02 * np.sum(diff2)
 
 
 def calculate_ratings(matches, anchor=None):
@@ -26,6 +34,11 @@ def calculate_ratings(matches, anchor=None):
         {match.winner for match in matches} |
         {match.loser for match in matches}
     ))
+    # Move the anchor to the front
+    if anchor in all_bots:
+        all_bots.remove(anchor)
+        all_bots.insert(0, anchor)
+
     index = {bot: i for i, bot in enumerate(all_bots)}
 
     n = len(matches)
@@ -37,22 +50,19 @@ def calculate_ratings(matches, anchor=None):
         losers[i] = index[match.loser]
 
     n_bot = len(all_bots)
-    guess = np.ones(n_bot - 1)
-    # Can't let the abstract rating go to 0, since we take its log
-    bounds = [(1e-5, None) for _ in guess]
+    guess = ELO_1000 * np.ones(n_bot - 1)
     result = minimize(
         nll_results, guess,
         args=(winners, losers),
-        bounds=bounds,
         options={
+            'gtol': 1e-4,
             'maxiter': 1000000,
-            'maxfun': 5000000,
         }
     )
     assert result.success
 
-    abstract_ratings = np.concatenate([np.ones(1), result.x])
-    elo_ratings = 400.0 * np.log10(abstract_ratings)
+    abstract_ratings = np.concatenate([ELO_1000 * np.ones(1), result.x])
+    elo_ratings = 400.0 * abstract_ratings
     if anchor is not None and anchor in index:
         anchor_rating = elo_ratings[index[anchor]]
         elo_ratings += 1000 - anchor_rating

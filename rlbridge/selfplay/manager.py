@@ -7,7 +7,7 @@ from .trainer import Trainer
 __all__ = ['SelfPlayManager']
 
 class SelfPlayManager:
-    def __init__(self, workspace, config, logger):
+    def __init__(self, workspace, config, logger, evaluate_only=False):
         self.config = config
         self.logger = logger
         self._experience_q = multiprocessing.Queue()
@@ -28,20 +28,24 @@ class SelfPlayManager:
             config=config,
             logger=self.logger
         )
+        self._evaluate_only = evaluate_only
 
     def start(self):
         self.logger.log('start self-play!')
-        self._trainer.start()
-        self._worker_pool.start()
+        if not self._evaluate_only:
+            self._trainer.start()
+            self._worker_pool.start()
         self._evaluator.start()
 
     def maintain(self):
-        self._worker_pool.maintain()
-        self._trainer.maintain()
+        if not self._evaluate_only:
+            self._worker_pool.maintain()
+            self._trainer.maintain()
         self._evaluator.maintain()
 
     def stop(self):
         self.logger.log('stop self-play!')
         self._evaluator.stop()
-        self._worker_pool.stop()
-        self._trainer.stop()
+        if not self._evaluate_only:
+            self._worker_pool.stop()
+            self._trainer.stop()

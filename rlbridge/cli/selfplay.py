@@ -17,6 +17,9 @@ class SelfPlay(Command):
     def register_arguments(self, parser):
         parser.add_argument('--start-from')
         parser.add_argument('--config', '-c', required=True)
+        parser.add_argument(
+            '--evaluate-only', default=False, action='store_true'
+        )
 
     def run(self, args):
         kerasutil.set_tf_options(disable_gpu=True)
@@ -39,7 +42,8 @@ class SelfPlay(Command):
         selfplay = SelfPlayManager(
             workspace=workspace,
             config=conf,
-            logger=logger
+            logger=logger,
+            evaluate_only=args.evaluate_only
         )
         selfplay.start()
 
