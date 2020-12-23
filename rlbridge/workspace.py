@@ -2,6 +2,7 @@ import json
 import os
 
 from .bots import load_bot, save_bot
+from .paramstore import ParamStore
 
 
 class UninitializedError(Exception):
@@ -18,6 +19,9 @@ class Workspace:
         self.eval_dir = os.path.join(basedir, 'eval')
         self.state_file = os.path.join(basedir, 'state')
         self.eval_db_file = os.path.join(basedir, 'evaluation.db')
+        self.param_db_file = os.path.join(basedir, 'params.db')
+
+        self.params = ParamStore(self.param_db_file)
 
     def store_bot(self, bot):
         bot_path = os.path.join(self.bot_dir, bot.identify())
