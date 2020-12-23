@@ -11,24 +11,29 @@ NO_DEFAULT = object()
 
 class ParamStore:
     def __init__(self, db_fname):
-        self._conn = sqlite3.connect(db_fname)
-        self._conn.execute('''
+        self._db_fname = db_fname
+        conn = sqlite3.connect(db_fname)
+        conn.execute('''
             CREATE TABLE IF NOT EXISTS params (
                 key_name TEXT PRIMARY KEY,
                 raw_value TEXT
             )
         ''')
-        self._conn.commit()
+        conn.commit()
+
+    def _conn(self):
+        return sqlite3.connect(self._db_fname)
 
     def _set_raw(self, key, raw_value):
-        cursor = self._conn.cursor()
+        conn = self._conn()
+        cursor = conn.cursor()
         cursor.execute('''
             REPLACE INTO params (key_name, raw_value) VALUES (?, ?)
         ''', (key, raw_value))
-        self._conn.commit()
+        conn.commit()
 
     def _get_raw(self, key, decoder=lambda x: x, default=NO_DEFAULT):
-        cursor = self._conn.cursor()
+        cursor = self._conn().cursor()
         cursor.execute('''
             SELECT raw_value FROM params WHERE key_name=?
         ''', (key,))
@@ -41,7 +46,7 @@ class ParamStore:
         return decoder(raw_value)
 
     def has_key(self, key):
-        cursor = self._conn.cursor()
+        cursor = self._conn().cursor()
         cursor.execute('''
             SELECT 1 FROM params WHERE key_name=?
         ''', (key,))

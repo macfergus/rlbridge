@@ -153,7 +153,6 @@ class ExperienceGenerator:
         self._logger = logger
         self._config = config['self_play']
         self._worker_idx = 0
-        self._max_contract = 1
         self._contract_history = []
         self._last_recv = 0.0
 
@@ -161,10 +160,15 @@ class ExperienceGenerator:
         for _ in range(config['self_play']['num_workers']):
             self._new_worker()
 
+        if not self._workspace.params.has_key('max_contract'):
+            self._logger.log('Initialize max_contract to 1')
+            self._workspace.params.set_int('max_contract', 1)
+
     def _new_worker(self):
         self._worker_idx += 1
         name = f'worker-{self._worker_idx}'
         ctl_q = multiprocessing.Queue()
+        max_contract = self._workspace.params.get_int('max_contract', 1)
         worker = Worker(
             name=name,
             ctl_q=ctl_q,
@@ -175,9 +179,8 @@ class ExperienceGenerator:
                     ctl_q,
                     self.recv_queue,
                     self._stat_queue,
-                    self._max_contract,
+                    max_contract,
                     self._workspace.state_file,
-
                     self._logger,
                     self._config
                 )
@@ -208,22 +211,23 @@ class ExperienceGenerator:
         if n_hands >= 1000:
             self._logger.log(f'Made {made} contracts over {n_hands} hands')
             pct_made = np.mean(self._contract_history)
+            max_contract = self._workspace.params.get_int('max_contract', 1)
             if (
                     pct_made >= self._config['target_contracts_upper'] and
-                    self._max_contract < 7
+                    max_contract < 7
             ):
-                self._max_contract += 1
                 self._logger.log(
-                    f'Raising max contract to {self._max_contract}'
+                    f'Raising max contract to {max_contract + 1}'
                 )
+                self._workspace.params.set_int('max_contract', max_contract + 1)
             if (
                     pct_made < self._config['target_contracts_lower'] and
                     self._max_contract > 1
             ):
-                self._max_contract -= 1
                 self._logger.log(
-                    f'Dropping max contract to {self._max_contract}'
+                    f'Dropping max contract to {max_contract - 1}'
                 )
+                self._workspace.params.set_int('max_contract', max_contract - 1)
             self._contract_history = []
 
         # Manage the worker pool
