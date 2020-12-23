@@ -2,6 +2,7 @@ import json
 import os
 
 from .bots import load_bot, save_bot
+from .evalstore import EvalStore
 from .paramstore import ParamStore
 
 
@@ -22,6 +23,7 @@ class Workspace:
         self.param_db_file = os.path.join(basedir, 'params.db')
 
         self.params = ParamStore(self.param_db_file)
+        self.eval_store = EvalStore(self.eval_db_file)
 
     def store_bot(self, bot):
         bot_path = os.path.join(self.bot_dir, bot.identify())

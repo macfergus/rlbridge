@@ -54,37 +54,7 @@ class Elo(Command):
         all_ratings = {}
         for run_id in args.run_id:
             workspace = open_workspace(run_id)
-            conn = sqlite3.connect(workspace.eval_db_file)
-            cursor = conn.execute('''
-                SELECT
-                    bot1, bot2,
-                    bot1_points, bot2_points,
-                    bot1_contracts, bot2_contracts
-                FROM matches
-            ''')
-            bots = set()
-            matches = []
-            for row in cursor:
-                (
-                    bot1, bot2,
-                    bot1_points, bot2_points,
-                    bot1_contracts, bot2_contracts
-                ) = row
-                bots.add(bot1)
-                bots.add(bot2)
-                if args.goal == 'points':
-                    if bot1_points > bot2_points:
-                        matches.append(elo.Match(winner=bot1, loser=bot2))
-                    if bot2_points > bot1_points:
-                        matches.append(elo.Match(winner=bot2, loser=bot1))
-                elif args.goal == 'contracts':
-                    if bot1_contracts > bot2_contracts:
-                        matches.append(elo.Match(winner=bot1, loser=bot2))
-                    if bot2_contracts > bot1_contracts:
-                        matches.append(elo.Match(winner=bot2, loser=bot1))
-
-            first_bot = sorted(bots)[0]
-            ratings = elo.calculate_ratings(matches, anchor=first_bot)
+            ratings = workspace.eval_store.get_elo_ratings()
             all_ratings[run_id] = ratings
     
             sorted_ratings = sorted(

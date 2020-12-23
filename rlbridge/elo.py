@@ -29,7 +29,7 @@ def nll_results(ratings, winners, losers):
     return -1 * log_likelihood + 0.02 * np.sum(diff2)
 
 
-def calculate_ratings(matches, anchor=None):
+def calculate_ratings(matches, anchor=None, guess={}):
     all_bots = list(sorted(
         {match.winner for match in matches} |
         {match.loser for match in matches}

@@ -1,6 +1,5 @@
 import os
 import random
-import sqlite3
 import time
 
 import numpy as np
@@ -8,6 +7,7 @@ import numpy as np
 from .. import bots
 from .. import elo
 from .. import kerasutil
+from ..evalstore import Match
 from ..mputil import Loopable, LoopingProcess
 from ..players import Player
 from ..simulate import simulate_game
@@ -24,117 +24,49 @@ class EvaluatorImpl(Loopable):
         self._config = config
         kerasutil.set_tf_options(disable_gpu=True)
 
-        self._conn = sqlite3.connect(self._workspace.eval_db_file)
-
-        self._conn.execute('''
-            CREATE TABLE IF NOT EXISTS matches (
-                bot1 TEXT,
-                bot2 TEXT,
-                num_hands INTEGER,
-                bot1_points INTEGER,
-                bot2_points INTEGER,
-                bot1_contracts INTEGER,
-                bot2_contracts INTEGER
-            )
-        ''')
-        self._conn.commit()
-
         self._game_queue = []
-
-        self._ratings = {}
-        self._last_elo_update = 0
 
     def _save_result(
             self, bot1, bot2, num_hands, bot1_points, bot2_points,
             bot1_contracts, bot2_contracts
     ):
-        self._conn.execute('''
-            INSERT INTO matches (
-                bot1,
-                bot2,
-                num_hands,
-                bot1_points,
-                bot2_points,
-                bot1_contracts,
-                bot2_contracts
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            bot1.identify(),
-            bot2.identify(),
-            int(num_hands),
-            int(bot1_points),
-            int(bot2_points),
-            int(bot1_contracts),
-            int(bot2_contracts)
+        self._workspace.eval_store.store_match(Match(
+            bot1=bot1.identify(),
+            bot2=bot2.identify(),
+            num_hands=int(num_hands),
+            bot1_points=int(bot1_points),
+            bot2_points=int(bot2_points),
+            bot1_contracts=int(bot1_contracts),
+            bot2_contracts=int(bot2_contracts)
         ))
-        self._conn.commit()
 
     def _get_bot_weights(self, bot_names):
         weights = {bot_name: 0 for bot_name in bot_names}
-        cursor = self._conn.execute('''
-            SELECT bot1, COUNT(*)
-            FROM matches GROUP BY bot1
-        ''')
-        for row in cursor:
-            bot_name, count = row
-            if bot_name in weights:
-                weights[bot_name] += count
-        cursor = self._conn.execute('''
-            SELECT bot2, COUNT(*)
-            FROM matches GROUP BY bot2
-        ''')
-        for row in cursor:
-            bot_name, count = row
-            if bot_name in weights:
-                weights[bot_name] += count
+        matches = self._workspace.eval_store.get_eval_matches()
+        for match in matches:
+            weights[match.bot1] += 1
+            weights[match.bot2] += 1
         return weights
 
-    def _calc_elo(self):
-        cursor = self._conn.execute('''
-            SELECT bot1, bot2, bot1_points, bot2_points FROM matches
-        ''')
-        botset = set()
-        matches = []
-        for bot1, bot2, bot1_points, bot2_points in cursor:
-            botset.add(bot1)
-            botset.add(bot2)
-            if bot1_points > bot2_points:
-                matches.append(elo.Match(winner=bot1, loser=bot2))
-            if bot2_points > bot1_points:
-                matches.append(elo.Match(winner=bot2, loser=bot1))
-        if not matches:
-            self._logger.log('no matches')
-            return {}
-        first_bot = sorted(botset)[0]
-        self._logger.log('calculate ratings')
-        return elo.calculate_ratings(matches, anchor=first_bot)
-
-    def _need_new_ratings(self):
-        if not self._ratings:
-            return True
-        now = time.time()
-        if now - self._last_elo_update > 450:
-            return True
-        return False
+    def _get_elo(self):
+        return self._workspace.eval_store.get_elo_ratings()
 
     def _extend_queue_by_elo(self, bot_names):
         weights = self._get_bot_weights(bot_names)
         weight_array = np.array([weights[name] for name in bot_names])
         idx = np.argmin(weight_array)
 
-        if self._need_new_ratings():
-            self._ratings = self._calc_elo()
-            self._last_elo_update = time.time()
-        if not self._ratings:
+        ratings = self._get_elo()
+        if not ratings:
             bot1, bot2 = random.sample(bot_names, 2)
             self._game_queue.append((bot1, bot2))
             return
 
-        base_rating = self._ratings.pop(bot_names[idx], 1000)
-        self._logger.log(f'evaluating {bot_names[idx]} elo {base_rating}')
+        base_rating = ratings.pop(bot_names[idx], 1000)
+        self._logger.log(f'Evaluating {bot_names[idx]} elo {base_rating}')
         elo_diff = [
             (abs(rating - base_rating), bot)
-            for bot, rating in self._ratings.items()
+            for bot, rating in ratings.items()
             if bot != bot_names[idx]
         ]
         elo_diff.sort()
