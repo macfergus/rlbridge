@@ -60,6 +60,7 @@ class EvaluatorImpl(Loopable):
         if not ratings:
             bot1, bot2 = random.sample(bot_names, 2)
             self._game_queue.append((bot1, bot2))
+            self._logger.log(f'Evaluating {bot1} vs {bot2}')
             return
 
         base_rating = ratings.pop(bot_names[idx], 1000)
@@ -116,7 +117,6 @@ class EvaluatorImpl(Loopable):
             return
         bot1.set_option('temperature', self._config['temperature'])
         bot2.set_option('temperature', self._config['temperature'])
-        self._logger.log(f'Evaluating {bot1.identify()} vs {bot2.identify()}')
 
         bot1_points = 0
         bot2_points = 0

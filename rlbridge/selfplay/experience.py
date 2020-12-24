@@ -222,7 +222,7 @@ class ExperienceGenerator:
                 self._workspace.params.set_int('max_contract', max_contract + 1)
             if (
                     pct_made < self._config['target_contracts_lower'] and
-                    self._max_contract > 1
+                    max_contract > 1
             ):
                 self._logger.log(
                     f'Dropping max contract to {max_contract - 1}'

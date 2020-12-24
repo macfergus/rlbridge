@@ -56,7 +56,7 @@ def calculate_ratings(matches, anchor=None, guess={}):
         args=(winners, losers),
         options={
             'gtol': 1e-4,
-            'maxiter': 1000000,
+            'maxiter': 5000000,
         }
     )
     assert result.success

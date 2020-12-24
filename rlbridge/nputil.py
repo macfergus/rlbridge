@@ -21,7 +21,7 @@ def smooth(x, window_size, width=1):
     if window_size % 2 == 0:
         raise ValueError('window_size must be odd')
     n_pad = (window_size - 1) // 2
-    kernel = signal.gaussian(window_size, std=1)
+    kernel = signal.gaussian(window_size, std=width)
     x_pad = np.concatenate([
         x[0] * np.ones(n_pad),
         x,
