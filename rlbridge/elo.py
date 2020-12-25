@@ -29,7 +29,7 @@ def nll_results(ratings, winners, losers):
     return -1 * log_likelihood + 0.02 * np.sum(diff2)
 
 
-def calculate_ratings(matches, anchor=None, guess={}):
+def calculate_ratings(matches, anchor=None, guess=None):
     all_bots = list(sorted(
         {match.winner for match in matches} |
         {match.loser for match in matches}
@@ -50,9 +50,12 @@ def calculate_ratings(matches, anchor=None, guess={}):
         losers[i] = index[match.loser]
 
     n_bot = len(all_bots)
-    guess = ELO_1000 * np.ones(n_bot - 1)
+    if guess is None:
+        guess = {}
+    guess_array = np.array([guess.get(bot, 1000) for bot in all_bots[1:]])
+    guess_array = guess_array.astype(np.float32) / 400
     result = minimize(
-        nll_results, guess,
+        nll_results, guess_array,
         args=(winners, losers),
         options={
             'gtol': 1e-4,
