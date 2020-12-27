@@ -1,3 +1,3 @@
 # rlbridge
 
-Some experiments
+An experiment with deep reinforcement learning for computer bridge

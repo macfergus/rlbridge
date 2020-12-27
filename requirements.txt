@@ -1,0 +1,11 @@
+flask
+h5py
+matplotlib
+numpy
+pandas
+pylint
+pyyaml
+scipy
+seaborn
+tensorflow
+tqdm

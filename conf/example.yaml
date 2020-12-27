@@ -1,0 +1,70 @@
+# Use this run id to track or resume a specific training run
+run_id: example
+
+training:
+    # Retrain after collecting this many decisions.
+    # A typical hand produces about 15 decisions
+    # Lower this if you run out of memory
+    chunk_size: 8000
+    chunks_per_promote: 1
+
+    # If false, use the raw policy gradient
+    # If true, use advantages
+    use_advantage: true
+
+    # Fixed learning rate for training
+    lr: 0.0001
+    # Or you can schedule the learning rate to change after specific
+    # numbers of games, like this:
+    # lr_schedule:
+    #   - until: 60000
+    #     lr: 0.0002
+    #   - until: 150000
+    #     lr: 0.0001
+    #   - finally: 0.00005
+    # If you set lr_schedule, remove the lr option
+
+    # During self-play, keep the last bots_to_keep bots as opponents.
+    # The self-play opponents will be weighted toward more recent bots
+    bots_to_keep: 15
+
+    # Keep a fraction of the bots for evaluating strength
+    # Evaluating every single bot can be slow, so this settings allows you
+    # to evaluate only a fraction
+    eval_frac: 0.1
+
+self_play:
+    # Set num_workers to something less than the number of available
+    # cores
+    num_workers: 2
+
+    # Reward function can be `points` or `contracts`
+    # With `points`, the rewards follow real bridge scoring rules
+    # With `contracts`, agents get rewards for making contracts.
+    # The `contracts` reward scheme was designed to escape the equilibrium
+    # in which agents don't want to bid, because they don't want to risk the
+    # penalty of getting defeated
+    reward: points
+        
+    # Workers will recycle them selves after this many self-play games. This
+    # can avoid memory leaks
+    max_games_per_worker: 1000
+
+    # Higher temperature will lead to more exploration
+    temperature: 1.5
+
+    # TODO explain contract limiting
+    target_contracts_upper: 0.20
+    target_contracts_lower: 0.05
+
+evaluation:
+    # In an evaluation match, two bots play multiple hands and add up the
+    # total points. This is important because in any single hand, one side
+    # can win on the basis of superior cards. Playing multiple hands reduces
+    # that advantage
+    num_hands_per_match: 10
+
+    # A lower temperature makes the bot prefer whatever it sees as the
+    # best decision. During evaluation, we want the bots playing closer
+    # to full strength (in self-play, we want a little more randomness)
+    temperature: 0.2
