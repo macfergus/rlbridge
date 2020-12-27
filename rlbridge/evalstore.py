@@ -42,7 +42,7 @@ class EvalStore:
     def get_elo_ratings(self):
         cursor = self._conn().cursor()
         cursor.execute('''SELECT bot, elo_rating FROM elo_ratings''')
-        return {bot: rating for bot, rating in cursor}
+        return dict(cursor)
 
     def store_elo_ratings(self, ratings):
         rows = [(bot, int(rating)) for bot, rating in ratings.items()]

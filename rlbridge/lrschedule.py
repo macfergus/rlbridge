@@ -11,9 +11,9 @@ class LRSchedule:
         self._final = final
 
     def lookup(self, position):
-        for breakpoint in self._changes:
-            if position < breakpoint.endpoint:
-                return breakpoint.lr
+        for breakpt in self._changes:
+            if position < breakpt.endpoint:
+                return breakpt.lr
         return self._final
 
     @classmethod
@@ -24,12 +24,12 @@ class LRSchedule:
     def from_dicts(cls, dictlist):
         final = None
         breakpoints = []
-        for d in dictlist:
-            if 'finally' in d:
-                final = d['finally']
+        for dct in dictlist:
+            if 'finally' in dct:
+                final = dct['finally']
             else:
                 breakpoints.append(
-                    Breakpoint(endpoint=d['until'], lr=float(d['lr']))
+                    Breakpoint(endpoint=dct['until'], lr=float(dct['lr']))
                 )
         assert final is not None
         breakpoints.sort()
