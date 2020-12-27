@@ -25,7 +25,7 @@ def plot_ratings(ratings, color='b', label=None):
     xs = np.array([n_games for n_games, _ in pairs])
     ys = np.array([rating for _, rating in pairs])
     smooth_ys = nputil.smooth(ys, 7, width=2)
-    plt.plot(xs, ys, color=color, alpha=0.2)
+    plt.plot(xs, ys, color=color, alpha=0.3)
     plt.plot(xs, smooth_ys, color=color, label=label)
 
 
