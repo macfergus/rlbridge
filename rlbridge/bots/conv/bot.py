@@ -116,7 +116,7 @@ class ConvBot(Bot):
 
         self._max_contract = 7
 
-        self._compiled_for_training = False
+        self._compiled_lr = -1
         self._compiled_for_pretraining = False
 
     def identify(self):
@@ -272,7 +272,7 @@ class ConvBot(Bot):
         )
 
     def train(self, episodes, lr=0.1, reinforce_only=False, use_advantage=True):
-        if not self._compiled_for_training:
+        if abs(self._compiled_lr - lr) > 1e-8:
             self.model.compile(
                 optimizer=SGD(lr=lr, clipnorm=0.5),
                 loss=[
@@ -286,7 +286,7 @@ class ConvBot(Bot):
                     0.1,
                 ]
             )
-            self._compiled_for_training = True
+            self._compiled_lr = lr
         x_state, y_call, y_play, y_value = prepare_training_data(
             episodes,
             reinforce_only=reinforce_only,

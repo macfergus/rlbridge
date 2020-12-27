@@ -1,3 +1,4 @@
+import copy
 import json
 
 from .. import bots
@@ -24,6 +25,8 @@ class InitBot(Command):
             metadata['name'] = args.name
         else:
             metadata['name'] = args.bot_type
+        for k, v in options.items():
+            metadata[f'model_option__{k}'] = v
         if args.metadata:
             metadata.update(json.loads(args.metadata))
 

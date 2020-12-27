@@ -6,6 +6,7 @@ import time
 
 import numpy as np
 from .. import bots
+from ..lrschedule import LRSchedule
 from ..mputil import Loopable, LoopingProcess
 
 
@@ -52,6 +53,13 @@ class TrainerImpl(Loopable):
         self._logger = logger
         self._config = config['training']
 
+        if 'lr_schedule' in self._config:
+            self._lr_schedule = LRSchedule.from_dicts(
+                self._config['lr_schedule']
+            )
+        else:
+            self._lr_schedule = LRSchedule.fixed(self._config['lr'])
+
         self._q = q
 
         self._total_games = 0
@@ -83,13 +91,15 @@ class TrainerImpl(Loopable):
             return
 
         # When the chunk is big enough, train the current bot
+        total_games = self._bot.metadata.get('num_games', 0)
+        lr = self._lr_schedule.lookup(total_games)
         self._logger.log(
             f'Training on {self._experience_size} examples from '
-            f'{self._num_games} games'
+            f'{self._num_games} games with LR {lr}'
         )
         hist = self._bot.train(
             self._experience,
-            lr=self._config['lr'],
+            lr=lr,
             use_advantage=self._config['use_advantage']
         )
         self._logger.log(

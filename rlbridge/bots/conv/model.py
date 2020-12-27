@@ -12,13 +12,17 @@ def construct_model(
         num_layers=5,
         state_size=64,
         hidden_size=64,
-        regularization=0.01
+        regularization=0.01,
+        kernel_reg=0.0,
 ):
     game_input = Input(input_shape)
 
     y = game_input
     for _ in range(num_layers):
-        y = Conv1D(num_filters, kernel_size, padding='same')(y)
+        y = Conv1D(
+            num_filters, kernel_size, padding='same',
+            kernel_regularizer=L2(kernel_reg) if kernel_reg > 0 else None
+        )(y)
         y = BatchNormalization()(y)
         y = Activation('relu')(y)
 
