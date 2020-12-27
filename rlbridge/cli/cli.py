@@ -7,6 +7,7 @@ from . import elo
 from . import evaluate
 from . import initbot
 from . import pretrain
+from . import prune
 from . import rename
 from . import selfplay
 from . import simpletrain
@@ -24,6 +25,7 @@ def cli():
         evaluate.Evaluate(),
         initbot.InitBot(),
         pretrain.Pretrain(),
+        prune.Prune(),
         rename.Rename(),
         selfplay.SelfPlay(),
         simpletrain.SimpleTrain(),
