@@ -7,8 +7,8 @@ fix-imports:
 
 .PHONY: test
 test:
-	$(PYTHON) -m unittest discover -p '*_test.py'
+	CUDA_VISIBLE_DEVICES=-1 $(PYTHON) -m unittest discover -p '*_test.py'
 
 .PHONY: lint
 lint:
-	pylint --rcfile=.pylintrc rlbridge/
+	CUDA_VISIBLE_DEVICES=-1 pylint --rcfile=.pylintrc rlbridge/

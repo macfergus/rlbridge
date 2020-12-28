@@ -10,7 +10,6 @@ from . import pretrain
 from . import prune
 from . import rename
 from . import selfplay
-from . import simpletrain
 from . import stats
 
 
@@ -28,7 +27,6 @@ def cli():
         prune.Prune(),
         rename.Rename(),
         selfplay.SelfPlay(),
-        simpletrain.SimpleTrain(),
         stats.Stats(),
     ]
     command_map = {}
