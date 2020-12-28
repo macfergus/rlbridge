@@ -81,10 +81,16 @@ def generate_games(
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
 
+        learn_temp = config.get('learn_temperature', config.get('temperature'))
+        ref_temp = config.get('ref_temperature', config.get('temperature'))
+        if learn_temp is None:
+            raise ValueError(f'Must set learn_temperature or temperature')
+        if ref_temp is None:
+            raise ValueError(f'Must set ref_temperature or temperature')
         learn_bot.set_option('max_contract', max_contract)
-        learn_bot.set_option('temperature', config['temperature'])
+        learn_bot.set_option('temperature', learn_temp)
         ref_bot.set_option('max_contract', max_contract)
-        ref_bot.set_option('temperature', config['temperature'])
+        ref_bot.set_option('temperature', ref_temp)
 
         recorder = ExperienceRecorder()
         learn_side = random.choice(['ns', 'ew'])
