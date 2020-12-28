@@ -70,7 +70,8 @@ class TrainerImpl(Loopable):
 
         self._chunks_done = 0
 
-        self._accumulator = 0.0
+        if not self._workspace.params.has_key('accumulator'):
+            self._workspace.params.set_float('accumulator', 0.0)
 
     def run_once(self):
         try:
@@ -113,11 +114,13 @@ class TrainerImpl(Loopable):
             self._logger.log('Promoting!')
             self._chunks_done = 0
             self._bot_pool.promote(self._bot)
-            self._accumulator += self._config['eval_frac']
-            if self._accumulator >= 1.0:
+            accumulator = self._workspace.params.get_float('accumulator')
+            accumulator += self._config['eval_frac']
+            if accumulator >= 1.0:
                 self._logger.log('and marking for evaluation')
                 self._workspace.store_bot_for_eval(self._bot)
-                self._accumulator -= 1.0
+                accumulator -= 1.0
+            self._workspace.params.set_float('accumulator', accumulator)
 
         self._num_games = 0
         self._experience = []
