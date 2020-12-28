@@ -124,6 +124,7 @@ class EvaluatorImpl(Loopable):
         bot2_contracts = 0
         bot1_side = 'ns'
         num_hands = 0
+        discarded_hands = 0
         while num_hands < self._config['num_hands_per_match']:
             if bot1_side == 'ns':
                 ns_bot = bot1
@@ -133,6 +134,7 @@ class EvaluatorImpl(Loopable):
                 ns_bot = bot2
             result = simulate_game(ns_bot, ew_bot)
             if result.declarer is None:
+                discarded_hands += 1
                 continue
             num_hands += 1
             bot1_declared = (
@@ -164,6 +166,8 @@ class EvaluatorImpl(Loopable):
             if bot2_declared and result.contract_made:
                 bot2_contracts += 1
             bot1_side = 'ew' if bot1_side == 'ns' else 'ew'
+        if discarded_hands > 0:
+            self._logger.log(f'Discarded {discarded_hands} hands')
 
         self._save_result(
             bot1, bot2,

@@ -62,7 +62,7 @@ class BotPool:
 
 
 def generate_games(
-        ctl_q, exp_q, stat_q, max_contract, state_fname, logger, config
+        ctl_q, exp_q, stat_q, workspace, state_fname, logger, config
 ):
     disable_sigint()
     kerasutil.set_tf_options(disable_gpu=True)
@@ -80,6 +80,8 @@ def generate_games(
         bot_pool.refresh()
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
+
+        max_contract = workspace.params.get_int('max_contract')
 
         learn_temp = config.get('learn_temperature', config.get('temperature'))
         ref_temp = config.get('ref_temperature', config.get('temperature'))
@@ -174,7 +176,6 @@ class ExperienceGenerator:
         self._worker_idx += 1
         name = f'worker-{self._worker_idx}'
         ctl_q = multiprocessing.Queue()
-        max_contract = self._workspace.params.get_int('max_contract', 1)
         worker = Worker(
             name=name,
             ctl_q=ctl_q,
@@ -185,7 +186,7 @@ class ExperienceGenerator:
                     ctl_q,
                     self.recv_queue,
                     self._stat_queue,
-                    max_contract,
+                    self._workspace,
                     self._workspace.state_file,
                     self._logger,
                     self._config
