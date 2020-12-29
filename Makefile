@@ -2,8 +2,8 @@ PYTHON ?= python
 
 .PHONY: fix-imports
 fix-imports:
-	isort -rc -y rlbridge/
-	isort -rc -y bridgecli
+	isort rlbridge/
+	isort bridgecli
 
 .PHONY: test
 test:
