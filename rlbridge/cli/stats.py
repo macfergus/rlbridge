@@ -60,11 +60,6 @@ class Stats(Command):
             workspace = open_workspace(run_id)
             ratings = workspace.eval_store.get_elo_ratings()
             all_ratings[run_id] = ratings
-    
-            sorted_ratings = sorted(
-                [(rating, bot) for bot, rating in ratings.items()],
-                reverse=True
-            )
 
         plot_buffer = io.BytesIO()
         plot_all_ratings(all_ratings, plot_buffer)
