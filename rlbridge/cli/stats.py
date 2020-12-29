@@ -41,7 +41,7 @@ def plot_all_ratings(all_ratings, out_fname):
     plt.legend()
     plt.grid()
     plt.savefig(out_fname, dpi=100)
-    
+    plt.close('all')
 
 
 class Stats(Command):
