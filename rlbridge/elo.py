@@ -15,17 +15,15 @@ Match = namedtuple('Match', 'winner loser')
 ELO_1000 = 1000.0 / 400.0
 
 
-def nll_results(ratings, winners, losers):
+def negative_log_likelihood(ratings, wins):
     all_ratings = np.concatenate([ELO_1000 * np.ones(1), ratings])
-    winner_ratings = np.power(10.0, all_ratings[winners])
-    loser_ratings = np.power(10.0, all_ratings[losers])
-    log_p_wins = np.log(winner_ratings / (winner_ratings + loser_ratings))
-    log_likelihood = np.sum(log_p_wins)
+    exp_ratings = np.power(10.0, all_ratings)
+    log_p_win = np.log(exp_ratings / np.add.outer(exp_ratings, exp_ratings))
+    log_likelihood = np.sum(log_p_win * wins)
 
     baseline = ELO_1000 * np.ones_like(all_ratings)
     diff = all_ratings - baseline
     diff2 = diff * diff
-
     return -1 * log_likelihood + 0.02 * np.sum(diff2)
 
 
@@ -40,23 +38,20 @@ def calculate_ratings(matches, anchor=None, guess=None):
         all_bots.insert(0, anchor)
 
     index = {bot: i for i, bot in enumerate(all_bots)}
-
-    n = len(matches)
-    winners = np.zeros(n, dtype=np.int64)
-    losers = np.zeros(n, dtype=np.int64)
-
-    for i, match in enumerate(matches):
-        winners[i] = index[match.winner]
-        losers[i] = index[match.loser]
+    n_bots = len(all_bots)
+    wins = np.zeros((n_bots, n_bots))
+    for match in matches:
+        wins[index[match.loser], index[match.winner]] += 1
 
     if guess is None:
         guess = {}
     guess_array = np.array([guess.get(bot, 1000) for bot in all_bots[1:]])
     guess_array = guess_array.astype(np.float32) / 400
+
     result = minimize(
-        nll_results, guess_array,
+        negative_log_likelihood, guess_array,
         method='Nelder-Mead',
-        args=(winners, losers),
+        args=(wins,),
         options={
             'maxiter': 5000000,
             'maxfev': 5000000,
