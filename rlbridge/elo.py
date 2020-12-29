@@ -56,13 +56,16 @@ def calculate_ratings(matches, anchor=None, guess=None):
     guess_array = guess_array.astype(np.float32) / 400
     result = minimize(
         nll_results, guess_array,
+        method='Nelder-Mead',
         args=(winners, losers),
         options={
-            'gtol': 1e-4,
-            'maxiter': 10000000,
+            'maxiter': 5000000,
+            'maxfev': 5000000,
         }
     )
-    assert result.success
+    if not result.success:
+        print(result)
+        assert result.success
 
     abstract_ratings = np.concatenate([ELO_1000 * np.ones(1), result.x])
     elo_ratings = 400.0 * abstract_ratings
