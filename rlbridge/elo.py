@@ -49,7 +49,6 @@ def calculate_ratings(matches, anchor=None, guess=None):
         winners[i] = index[match.winner]
         losers[i] = index[match.loser]
 
-    n_bot = len(all_bots)
     if guess is None:
         guess = {}
     guess_array = np.array([guess.get(bot, 1000) for bot in all_bots[1:]])

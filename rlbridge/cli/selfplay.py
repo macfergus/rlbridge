@@ -1,12 +1,8 @@
-import json
-import os
-import shutil
 import time
 
 import yaml
 
 from .. import kerasutil
-from ..bots import load_bot, save_bot
 from ..mputil import MPLogManager
 from ..selfplay import SelfPlayManager
 from ..workspace import UninitializedError, init_workspace, open_workspace
