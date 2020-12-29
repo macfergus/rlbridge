@@ -5,6 +5,7 @@ import queue
 import time
 
 import numpy as np
+
 from .. import bots
 from ..lrschedule import LRSchedule
 from ..mputil import Loopable, LoopingProcess

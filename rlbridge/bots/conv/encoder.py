@@ -5,7 +5,6 @@ import numpy as np
 from ...cards import Card, Suit
 from ...game import Bid, Call, Denomination, Play
 
-
 PSA = namedtuple('PSA', 'player state action')
 
 

@@ -1,8 +1,8 @@
 import numpy as np
 from keras.optimizers import SGD
 
-from ...io import format_hand
 from ...game import Action, Phase
+from ...io import format_hand
 from ...players import Player
 from ...rl import Decision, Episode, concat_episodes
 from ..base import Bot, UnrecognizedOptionError

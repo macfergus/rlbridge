@@ -62,4 +62,3 @@ class ParamStoreTest(unittest.TestCase):
             store = ParamStore(fname)
             store.set_int('key', 5)
             self.assertEqual(5, store.get_int('key'))
-

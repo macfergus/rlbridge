@@ -7,11 +7,9 @@ import seaborn as sns
 from flask import Flask, Response
 from matplotlib import pyplot as plt
 
-from .. import elo
-from .. import nputil
+from .. import elo, nputil
 from ..workspace import open_workspace
 from .command import Command
-
 
 Match = namedtuple('Match', 'winner loser')
 

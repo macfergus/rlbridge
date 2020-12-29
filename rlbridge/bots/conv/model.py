@@ -1,5 +1,6 @@
 from keras import Model
-from keras.layers import Activation, BatchNormalization, Conv1D, Dense, Flatten, Input
+from keras.layers import (Activation, BatchNormalization, Conv1D, Dense,
+                          Flatten, Input)
 from keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 from tensorflow.keras.regularizers import L2

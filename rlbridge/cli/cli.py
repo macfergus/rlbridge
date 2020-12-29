@@ -1,16 +1,8 @@
 import argparse
 import sys
 
-from . import benchmark
-from . import demogame
-from . import elo
-from . import evaluate
-from . import initbot
-from . import pretrain
-from . import prune
-from . import rename
-from . import selfplay
-from . import stats
+from . import (benchmark, demogame, elo, evaluate, initbot, pretrain, prune,
+               rename, selfplay, stats)
 
 
 def cli():

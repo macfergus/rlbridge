@@ -4,9 +4,7 @@ import time
 
 import numpy as np
 
-from .. import bots
-from .. import elo
-from .. import kerasutil
+from .. import bots, elo, kerasutil
 from ..mputil import Loopable, LoopingProcess
 
 

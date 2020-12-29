@@ -1,7 +1,6 @@
 import copy
 from collections import namedtuple
 
-
 Breakpoint = namedtuple('Breakpoint', ['endpoint', 'lr'])
 
 

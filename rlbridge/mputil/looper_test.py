@@ -1,8 +1,7 @@
-import time
-import unittest
-
 import multiprocessing
 import queue
+import time
+import unittest
 
 from .looper import Loopable, LoopingProcess
 

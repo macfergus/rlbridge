@@ -1,7 +1,6 @@
 import collections
 import sqlite3
 
-
 Match = collections.namedtuple('Match', [
     'bot1',
     'bot2',

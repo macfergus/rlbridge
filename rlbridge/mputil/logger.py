@@ -3,7 +3,6 @@ import multiprocessing
 
 from .interrupt import disable_sigint
 
-
 __all__ = ['MPLogManager']
 
 

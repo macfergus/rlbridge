@@ -8,7 +8,6 @@ from ...game import Call, GameState, Play
 from ...players import Player
 from .encoder import Encoder
 
-
 EXAMPLE_DEAL = Deal.from_dict({
     Player.north: map(Card.of, [
         "KS", "7S", "5S", "4S",
