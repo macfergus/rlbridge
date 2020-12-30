@@ -1,8 +1,8 @@
 import argparse
 import sys
 
-from . import (benchmark, demogame, diagnose, evaluate, initbot, pretrain, prune, rename,
-               selfplay, stats)
+from . import (benchmark, demogame, diagnose, evaluate, initbot, pretrain,
+               prune, rename, selfplay, stats)
 
 
 def cli():

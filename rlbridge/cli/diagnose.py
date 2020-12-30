@@ -1,12 +1,11 @@
 import random
-from collections import namedtuple
-from collections import Counter
+from collections import Counter, namedtuple
 
 import pandas as pd
 from tqdm import tqdm
 
-from ..bots import load_bot
 from .. import cards
+from ..bots import load_bot
 from ..game import GameState
 from ..players import Player
 from .command import Command
