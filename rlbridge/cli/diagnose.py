@@ -33,33 +33,35 @@ def longest_suit(hand):
 
 class Diagnose(Command):
     def register_arguments(self, parser):
-        parser.add_argument('bot')
+        parser.add_argument('bot', nargs='+')
         parser.add_argument('--out', '-o')
 
     def run(self, args):
-        bot = load_bot(args.bot)
-        bot.set_option('temperature', 0.2)
-
         results = []
-        for _ in tqdm(range(1000)):
-            hand = GameState.new_deal(
-                cards.new_deal(),
-                dealer=Player.north,
-                northsouth_vulnerable=random.choice([True, False]),
-                eastwest_vulnerable=random.choice([True, False])
-            )
-            h = hand.deal.initial_hands[hand.next_decider]
-            action = bot.select_action(hand)
+        for bot_name in tqdm(args.bot):
+            bot = load_bot(bot_name)
+            tqdm.write(bot.identify())
+            bot.set_option('temperature', 0.0)
 
-            did_open = action.call.is_bid
-            hcp = high_card_points(h)
-            length = longest_suit(h)
+            for _ in tqdm(range(1000), leave=False):
+                hand = GameState.new_deal(
+                    cards.new_deal(),
+                    dealer=Player.north,
+                    northsouth_vulnerable=random.choice([True, False]),
+                    eastwest_vulnerable=random.choice([True, False])
+                )
+                h = hand.deal.initial_hands[hand.next_decider]
+                action = bot.select_action(hand)
 
-            results.append({
-                'bot': bot.identify(),
-                'did_open': int(did_open),
-                'hcp': hcp,
-                'longest_suit': length,
-            })
+                did_open = action.call.is_bid
+                hcp = high_card_points(h)
+                length = longest_suit(h)
+
+                results.append({
+                    'bot': bot.identify(),
+                    'did_open': int(did_open),
+                    'hcp': hcp,
+                    'longest_suit': length,
+                })
         df = pd.DataFrame(results)
         df.to_csv(args.out)
