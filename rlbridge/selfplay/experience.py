@@ -97,11 +97,24 @@ def generate_games(
         recorder = ExperienceRecorder()
         learn_side = random.choice(['ns', 'ew'])
         made_contract = 0
+
+        contract_bonus = 0
+        if 'contract_bonus' in config:
+            contract_bonus = float(config['contract_bonus'])
+            strength = 1.0
+            if 'contract_bonus_fadeout' in config:
+                fadeout = float(config['contract_bonus_fadeout'])
+                n_games = learn_bot.metadata.get('num_games', 0)
+                strength = 1.0 - float(n_games) / fadeout
+                strength = max(strength, 0.0)
+            contract_bonus = strength * contract_bonus
+
         if learn_side == 'ns':
             game_result = simulate_game(
                 learn_bot, ref_bot, ns_recorder=recorder
             )
             if game_result.declarer is None:
+                logger.log('No bids, continue')
                 continue
             if (
                     game_result.contract_made and
@@ -112,13 +125,13 @@ def generate_games(
                 game_result,
                 Player.north,
                 recorder.get_decisions(Player.north),
-                reward=config['reward']
+                contract_bonus=contract_bonus,
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.south,
                 recorder.get_decisions(Player.south),
-                reward=config['reward']
+                contract_bonus=contract_bonus
             )
         else:
             game_result = simulate_game(
@@ -135,13 +148,13 @@ def generate_games(
                 game_result,
                 Player.east,
                 recorder.get_decisions(Player.east),
-                reward=config['reward']
+                contract_bonus=contract_bonus
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.west,
                 recorder.get_decisions(Player.west),
-                reward=config['reward']
+                contract_bonus=contract_bonus
             )
         stat_q.put(made_contract)
         exp_q.put(episode1)

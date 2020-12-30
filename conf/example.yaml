@@ -37,14 +37,6 @@ self_play:
     # Set num_workers to something less than the number of available
     # cores
     num_workers: 2
-
-    # Reward function can be `points` or `contracts`
-    # With `points`, the rewards follow real bridge scoring rules
-    # With `contracts`, agents get rewards for making contracts.
-    # The `contracts` reward scheme was designed to escape the equilibrium
-    # in which agents don't want to bid, because they don't want to risk the
-    # penalty of getting defeated
-    reward: points
         
     # Workers will recycle them selves after this many self-play games. This
     # can avoid memory leaks

@@ -71,9 +71,6 @@ def get_reward_contracts(game_result, perspective):
     if contract_made and is_declarer:
         # Big reward for making contracts
         return float(game_result.contract_level)
-    if (not contract_made) and is_defender:
-        # Tiny reward for defeating contracts
-        return 0.1
     # Nothing for going down, or for no contract
     return 0.0
 
@@ -176,12 +173,15 @@ class ConvBot(Bot):
             )
         return chosen_action
 
-    def encode_episode(self, game_result, perspective, decisions, reward):
-        if reward == 'points':
-            reward_func = get_reward_points
-        elif reward == 'contracts':
-            reward_func = get_reward_contracts
-        reward_amt = reward_func(game_result, perspective)
+    def encode_episode(
+            self, game_result, perspective, decisions, contract_bonus=0
+    ):
+        reward_amt = (
+            get_reward_points(game_result, perspective) +
+            (contract_bonus / 100.0) * get_reward_contracts(
+                game_result, perspective
+            )
+        )
         n = len(decisions)
         states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
