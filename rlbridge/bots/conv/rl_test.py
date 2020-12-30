@@ -3,7 +3,7 @@ import unittest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from ...game import Action, Call, Play
+from ...game import Action, Bid, Call, Play
 from ...players import Player
 from ...simulate import GameRecord
 from .bot import ConvBot, prepare_training_data
@@ -22,11 +22,11 @@ class RLTest(unittest.TestCase):
     def test_encode_episode_made_contract(self):
         game_result = GameRecord(
             game=None,
-            points_ns=1,
+            points_ns=200,
             points_ew=0,
             declarer=Player.north,
             contract_made=True,
-            contract_level=2
+            contract=Bid.of('2S')
         )
 
         decisions = [
@@ -46,7 +46,7 @@ class RLTest(unittest.TestCase):
             game_result,
             Player.north,
             decisions,
-            reward='contracts'
+            contract_bonus=0
         )
 
         # Check:
@@ -58,10 +58,14 @@ class RLTest(unittest.TestCase):
         assert_array_equal([1, 0], episode['calls_made'])
         # play_actions, plays_made
         assert_array_equal([0, 1], episode['plays_made'])
+        # rewards: 200 point diff / 100.0 scale == 2
+        assert_array_equal([2, 2], episode['rewards'])
         # advantages
         assert_array_equal([2, 1], episode['advantages'])
-        # rewards: all 2 in contract scoring method
-        assert_array_equal([2, 2], episode['rewards'])
+        # contracts: 2S
+        encoded_contract = np.array([0, 0, 0, 2.0 / 7.0, 0])
+        assert_array_equal(encoded_contract, episode['contracts'][0])
+        assert_array_equal(encoded_contract, episode['contracts'][1])
 
     def test_prepare_training_data(self):
         episode = {
@@ -81,25 +85,34 @@ class RLTest(unittest.TestCase):
             'plays_made': np.array([0, 1]),
             'rewards': [-2, -2],
             'advantages': [0, 0],
+            'contracts': np.array([
+                [0, 0, 0, 2 / 7, 0],
+                [0, 0, 0, 2 / 7, 0],
+            ])
         }
-        X, y_call, y_play, y_value = prepare_training_data(
+        data = prepare_training_data(
             [episode],
             reinforce_only=False,
             use_advantage=False
         )
 
-        assert_array_equal(episode['states'], X)
+        assert_array_equal(episode['states'], data['X'])
         # Call output:
         # First row, we should reinforce the made decision
-        assert_array_equal([-2, 0, 0], y_call[0])
+        assert_array_equal([-2, 0, 0], data['y_call'][0])
         # Second row is the "not my turn sentinel" -- does not get weighted
-        assert_array_equal([0, 0, 1], y_call[1])
+        assert_array_equal([0, 0, 1], data['y_call'][1])
 
         # Play output:
         # First row is "not my turn" sentinel
-        assert_array_equal([0, 0, 0, 1], y_play[0])
+        assert_array_equal([0, 0, 0, 1], data['y_play'][0])
         # Second row should be reinforced according to reward
-        assert_array_equal([-2, 0, 0, 0], y_play[1])
+        assert_array_equal([-2, 0, 0, 0], data['y_play'][1])
 
         # Value output: just the rewards, but reshaped
-        assert_array_equal(np.array([[-2], [-2]]), y_value)
+        assert_array_equal(np.array([[-2], [-2]]), data['y_value'])
+
+        # Contract output: all rows contain the final contract
+        expected_contract = np.array([0, 0, 0, 2 / 7, 0])
+        assert_array_equal(expected_contract, data['y_contract'][0])
+        assert_array_equal(expected_contract, data['y_contract'][1])

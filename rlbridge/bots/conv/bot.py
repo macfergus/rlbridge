@@ -56,7 +56,6 @@ def get_reward_points(game_result, perspective):
         # giant penalty to get out of the equilibrium where no one
         # tries to bid.
         reward = -100
-    reward /= 100
     return reward
 
 
@@ -70,7 +69,7 @@ def get_reward_contracts(game_result, perspective):
     )
     if contract_made and is_declarer:
         # Big reward for making contracts
-        return float(game_result.contract_level)
+        return float(game_result.contract.tricks)
     # Nothing for going down, or for no contract
     return 0.0
 
@@ -85,6 +84,7 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
 
     calls_made = experience['calls_made'].reshape((-1, 1))
     plays_made = experience['plays_made'].reshape((-1, 1))
+    contracts = experience['contracts']
 
     weight = advantages if use_advantage else rewards
 
@@ -101,7 +101,13 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
         play_actions = np.where(
             play_mask, weight * play_actions, play_actions)
 
-    return states, call_actions, play_actions, rewards
+    return {
+        'X': states,
+        'y_call': call_actions,
+        'y_play': play_actions,
+        'y_value': rewards,
+        'y_contract': contracts,
+    }
 
 
 class ConvBot(Bot):
@@ -138,7 +144,8 @@ class ConvBot(Bot):
     def select_action(self, state, recorder=None):
         game_record = self.encoder.encode_full_game(state, state.next_player)
         X = game_record.reshape((-1,) + self.encoder.input_shape())
-        calls, plays, values = self.model.predict(X)
+        outputs = self.model.predict(X)
+        calls, plays, values = outputs[:3]
         chosen_call = None
         chosen_play = None
         if state.phase == Phase.auction:
@@ -174,18 +181,31 @@ class ConvBot(Bot):
         return chosen_action
 
     def encode_episode(
-            self, game_result, perspective, decisions, contract_bonus=0
+            self, game_result, perspective, decisions, contract_bonus=0,
+            reward_scale='linear'
     ):
         reward_amt = (
             get_reward_points(game_result, perspective) +
-            (contract_bonus / 100.0) * get_reward_contracts(
+            contract_bonus * get_reward_contracts(
                 game_result, perspective
             )
         )
+        if reward_scale == 'log':
+            sign = np.sign(reward_amt)
+            reward_amt = sign * np.log(np.abs(reward_amt) + 1)
+        elif reward_scale == 'linear':
+            reward_amt = reward_amt / 100.0
+        else:
+            raise ValueError(reward_scale)
+
         n = len(decisions)
         states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
+        contracts = np.tile(
+            self.encoder.encode_contract(game_result.contract),
+            (n, 1)
+        )
         calls_made = np.zeros(n)
         plays_made = np.zeros(n)
         rewards = reward_amt * np.ones(n)
@@ -210,7 +230,8 @@ class ConvBot(Bot):
             calls_made=calls_made,
             plays_made=plays_made,
             advantages=advantages,
-            rewards=rewards
+            rewards=rewards,
+            contracts=contracts
         )
 
     def encode_pretraining(self, game_record, perspective):
@@ -272,36 +293,52 @@ class ConvBot(Bot):
         )
 
     def train(self, episodes, lr=0.1, reinforce_only=False, use_advantage=True):
+        has_contract_output = 'contract_output' in self.model.output_names
         if abs(self._compiled_lr - lr) > 1e-8:
+            losses = {
+                'call_output': CategoricalCrossentropy(from_logits=True),
+                'play_output': CategoricalCrossentropy(from_logits=True),
+                'value_output': 'mse',
+            }
+            loss_weights = {
+                'call_output': 1.0,
+                'play_output': 1.0,
+                'value_output': 0.1,
+            }
+            if has_contract_output:
+                losses['contract_output'] = 'mse'
+                loss_weights['contract_output'] = 1.0
             self.model.compile(
                 optimizer=SGD(lr=lr, clipnorm=0.5),
-                loss=[
-                    CategoricalCrossentropy(from_logits=True),
-                    CategoricalCrossentropy(from_logits=True),
-                    'mse'
-                ],
-                loss_weights=[
-                    1.0,
-                    1.0,
-                    0.1,
-                ]
+                loss=losses,
+                loss_weights=loss_weights
             )
             self._compiled_lr = lr
-        x_state, y_call, y_play, y_value = prepare_training_data(
+        data = prepare_training_data(
             episodes,
             reinforce_only=reinforce_only,
             use_advantage=use_advantage
         )
+        y = {
+            'call_output': data['y_call'],
+            'play_output': data['y_play'],
+            'value_output': data['y_value'],
+        }
+        if has_contract_output:
+            y['contract_output'] = data['y_contract']
         history = self.model.fit(
-            x_state,
-            [y_call, y_play, y_value],
+            data['X'],
+            y,
             batch_size=256,
             epochs=1,
             verbose=0
         )
-        return {
+        res = {
             'loss': history.history['loss'][0],
             'call_loss': history.history['call_output_loss'][0],
             'play_loss': history.history['play_output_loss'][0],
             'value_loss': history.history['value_output_loss'][0],
         }
+        if has_contract_output:
+            res['contract_loss'] = history.history['contract_output_loss'][0]
+        return res

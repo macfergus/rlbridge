@@ -108,7 +108,8 @@ def generate_games(
                 strength = 1.0 - float(n_games) / fadeout
                 strength = max(strength, 0.0)
             contract_bonus = strength * contract_bonus
-
+        reward_scale = config.get('reward_scale', 'linear')
+    
         if learn_side == 'ns':
             game_result = simulate_game(
                 learn_bot, ref_bot, ns_recorder=recorder
@@ -126,12 +127,14 @@ def generate_games(
                 Player.north,
                 recorder.get_decisions(Player.north),
                 contract_bonus=contract_bonus,
+                reward_scale=reward_scale
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.south,
                 recorder.get_decisions(Player.south),
-                contract_bonus=contract_bonus
+                contract_bonus=contract_bonus,
+                reward_scale=reward_scale
             )
         else:
             game_result = simulate_game(
@@ -148,13 +151,15 @@ def generate_games(
                 game_result,
                 Player.east,
                 recorder.get_decisions(Player.east),
-                contract_bonus=contract_bonus
+                contract_bonus=contract_bonus,
+                reward_scale=reward_scale
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.west,
                 recorder.get_decisions(Player.west),
-                contract_bonus=contract_bonus
+                contract_bonus=contract_bonus,
+                reward_scale=reward_scale
             )
         stat_q.put(made_contract)
         exp_q.put(episode1)

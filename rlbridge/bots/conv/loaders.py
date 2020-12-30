@@ -12,7 +12,10 @@ def init(options, metadata):
         kernel_size=int(options.get('kernel_size', 21)),
         num_layers=int(options.get('num_layers', 5)),
         state_size=int(options.get('state_size', 64)),
-        hidden_size=int(options.get('hidden_size', 64))
+        hidden_size=int(options.get('hidden_size', 64)),
+        regularization=float(options.get('regularization', 0.0)),
+        kernel_reg=float(options.get('kernel_reg', 0.0)),
+        aux_outs=options.get('aux_outs')
     )
     return ConvBot(mod, metadata)
 

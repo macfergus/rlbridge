@@ -206,5 +206,20 @@ class Encoder:
             array[start_index + card_index] = 1
         return array
 
+    def encode_contract(self, contract):
+        array = np.zeros(5)
+        if contract is None:
+            return array
+        scale = contract.tricks / 7.0
+        index = {
+            Denomination.suit(Suit.clubs): 0,
+            Denomination.suit(Suit.diamonds): 1,
+            Denomination.suit(Suit.hearts): 2,
+            Denomination.suit(Suit.spades): 3,
+            Denomination.notrump(): 4,
+        }[contract.denomination]
+        array[index] = scale
+        return array
+
     def input_shape(self):
         return (self.GAME_LENGTH, self.DIM)

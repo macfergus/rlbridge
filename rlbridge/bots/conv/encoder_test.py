@@ -4,7 +4,7 @@ import numpy as np
 from numpy.testing import assert_array_equal
 
 from ...cards import Card, Deal
-from ...game import Call, GameState, Play
+from ...game import Bid, Call, GameState, Play
 from ...players import Player
 from .encoder import Encoder
 
@@ -155,3 +155,12 @@ class ConvEncoderTest(unittest.TestCase):
         self.assertTrue(are_hidden(visible_cards(play_2, 'rho')))
         self.assertFalse(are_hidden(visible_cards(play_2, 'partner')))
         self.assertFalse(are_hidden(visible_cards(play_2, 'self')))
+
+    def test_encode_contract_no_contract(self):
+        assert_array_equal(np.zeros(5), self.encoder.encode_contract(None))
+
+    def test_encode_contract(self):
+        assert_array_equal(
+            [5 / 7, 0, 0, 0, 0],
+            self.encoder.encode_contract(Bid.of('5C'))
+        )

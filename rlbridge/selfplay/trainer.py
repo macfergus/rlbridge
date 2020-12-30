@@ -97,18 +97,22 @@ class TrainerImpl(Loopable):
         lr = self._lr_schedule.lookup(total_games)
         self._logger.log(
             f'Training on {self._experience_size} examples from '
-            f'{self._num_games} games with LR {lr}'
+            f'{self._num_games} games with learning rate {lr}'
         )
         hist = self._bot.train(
             self._experience,
             lr=lr,
             use_advantage=self._config['use_advantage']
         )
-        self._logger.log(
-            f'call_loss {hist["call_loss"]} '
-            f'play_loss {hist["play_loss"]} '
-            f'value_loss {hist["value_loss"]}'
+        loss_stats = (
+            f'call_loss {hist["call_loss"]:.3f} '
+            f'play_loss {hist["play_loss"]:.3f} '
+            f'value_loss {hist["value_loss"]:.3f}'
         )
+        if 'contract_loss' in hist:
+            loss_stats += f' contract_loss {hist["contract_loss"]:.3f}'
+        self._logger.log(loss_stats)
+
         self._bot.add_games(self._num_games)
         self._chunks_done += 1
         if self._chunks_done >= self._config['chunks_per_promote']:

@@ -15,6 +15,7 @@ def construct_model(
         hidden_size=64,
         regularization=0.01,
         kernel_reg=0.0,
+        aux_outs=None,
 ):
     game_input = Input(input_shape)
 
@@ -64,27 +65,36 @@ def construct_model(
     )(game_state)
     value_output = Dense(1, name='value_output')(value_hidden)
 
+    outputs = [call_output, play_output, value_output]
+    losses = {
+        'call_output': CategoricalCrossentropy(from_logits=True),
+        'play_output': CategoricalCrossentropy(from_logits=True),
+        'value_output': 'mse',
+    }
+    loss_weights = {
+        'call_output': 1.0,
+        'play_output': 1.0,
+        'value_output': 0.1,
+    }
+    if aux_outs is None:
+        aux_outs = []
+    else:
+        aux_outs = aux_outs.split('/')
+    if 'contract' in aux_outs:
+        contract_output = Dense(5, name='contract_output', activation='relu')(
+            game_state
+        )
+        outputs.append(contract_output)
+        losses['contract_output'] = 'mse'
+        loss_weights['contract_output'] = 1.0
+
     model = Model(
-        inputs=[
-            game_input,
-        ],
-        outputs=[
-            call_output,
-            play_output,
-            value_output,
-        ]
+        inputs=[game_input],
+        outputs=outputs,
     )
     model.compile(
         optimizer=SGD(clipnorm=0.5),
-        loss=[
-            CategoricalCrossentropy(from_logits=True),
-            CategoricalCrossentropy(from_logits=True),
-            'mse'
-        ],
-        loss_weights=[
-            1.0,
-            1.0,
-            0.1,
-        ]
+        loss=losses,
+        loss_weights=loss_weights,
     )
     return model

@@ -18,7 +18,7 @@ GameRecord = namedtuple('GameRecord', [
     'points_ew',
     'declarer',
     'contract_made',
-    'contract_level',
+    'contract',
 ])
 
 
@@ -54,7 +54,7 @@ def simulate_game(ns_bot, ew_bot, ns_recorder=None, ew_recorder=None):
             points_ew=0,
             declarer=None,
             contract_made=False,
-            contract_level=0,
+            contract=None,
         )
     declarer = hand.auction.result().declarer
     if declarer in (Player.north, Player.south):
@@ -69,5 +69,5 @@ def simulate_game(ns_bot, ew_bot, ns_recorder=None, ew_recorder=None):
         points_ew=points_ew,
         declarer=hand.auction.result().declarer,
         contract_made=result.declarer > 0,
-        contract_level=hand.auction.result().bid.tricks
+        contract=hand.auction.result().bid
     )
