@@ -17,12 +17,6 @@ class EloCalculatorImpl(Loopable):
         self._last_update = 0
 
     def run_once(self):
-        # Only update once every 2 minutes.
-        time.sleep(1)
-        now = time.time()
-        if now - self._last_update < 120:
-            return
-
         eval_store = self._workspace.eval_store
         eval_matches = eval_store.get_eval_matches()
         if not eval_matches:
@@ -67,7 +61,8 @@ class EloCalculator:
                 'workspace': self._workspace,
                 'logger': self._logger,
             },
-            restart=True
+            restart=True,
+            min_period=120
         )
 
     def start(self):

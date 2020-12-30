@@ -18,8 +18,11 @@ class Loopable:
         raise NotImplementedError()
 
 
-def _run_forever(ctrl_q, loopable_ctor, loopable_args, loopable_kwargs):
+def _run_forever(
+        ctrl_q, min_period, loopable_ctor, loopable_args, loopable_kwargs
+):
     disable_sigint()
+    last_run = time.time() - min_period
 
     loopable = loopable_ctor(*loopable_args, **loopable_kwargs)
     while True:
@@ -28,16 +31,23 @@ def _run_forever(ctrl_q, loopable_ctor, loopable_args, loopable_kwargs):
             return
         except queue.Empty:
             pass
+        now = time.time()
+        if now - last_run < min_period:
+            time.sleep(1)
+            continue
 
+        last_run = now
         loopable.run_once()
 
 
 class LoopingProcess:
     def __init__(
-            self, name, loopable_ctor, args=None, kwargs=None, restart=False
+            self, name, loopable_ctor, args=None, kwargs=None,
+            restart=False, min_period=0
     ):
         self._name = name
         self._restart = restart
+        self._min_period = min_period
         self._loopable_ctor = loopable_ctor
         if args is None:
             args = tuple()
@@ -57,6 +67,7 @@ class LoopingProcess:
             target=_run_forever,
             args=(
                 ctrl_q,
+                self._min_period,
                 self._loopable_ctor,
                 self._loopable_args,
                 self._loopable_kwargs

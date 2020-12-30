@@ -37,3 +37,37 @@ class LooperTestCase(unittest.TestCase):
         loop_proc.stop()
 
         self.assertTrue(succeeded, 'did not receive 5 values from worker')
+
+    def test_min_period(self):
+        recv_q = multiprocessing.Queue()
+
+        class Counter(Loopable):
+            def __init__(self, recv_q):
+                self._q = recv_q
+
+            def run_once(self):
+                self._q.put(1)
+
+        # Run a process with a max period of 10 ms
+        loop_proc = LoopingProcess(
+            'loop',
+            Counter,
+            kwargs={'recv_q': recv_q},
+            min_period=0.01
+        )
+        loop_proc.start()
+
+        start = time.time()
+        succeeded = False
+        received = []
+        # Let it run for 100 ms. We should not get more than 10 items 
+        # (or maybe 11 with some timing slop)
+        while time.time() - start < 0.1:
+            try:
+                received.append(recv_q.get(block=False))
+                time.sleep(0.001)
+            except queue.Empty:
+                break
+        loop_proc.stop()
+
+        self.assertLessEqual(len(received), 11)
