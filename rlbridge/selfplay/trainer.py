@@ -7,7 +7,7 @@ import time
 import numpy as np
 
 from .. import bots
-from ..lrschedule import LRSchedule
+from ..schedule import Schedule
 from ..mputil import Loopable, LoopingProcess
 
 
@@ -55,11 +55,11 @@ class TrainerImpl(Loopable):
         self._config = config['training']
 
         if 'lr_schedule' in self._config:
-            self._lr_schedule = LRSchedule.from_dicts(
+            self._lr_schedule = Schedule.from_dicts(
                 self._config['lr_schedule']
             )
         else:
-            self._lr_schedule = LRSchedule.fixed(self._config['lr'])
+            self._lr_schedule = Schedule.fixed(self._config['lr'])
 
         self._q = q
 

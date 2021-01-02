@@ -1,10 +1,10 @@
 import copy
 from collections import namedtuple
 
-Breakpoint = namedtuple('Breakpoint', ['endpoint', 'lr'])
+Breakpoint = namedtuple('Breakpoint', ['endpoint', 'value'])
 
 
-class LRSchedule:
+class Schedule:
     def __init__(self, changes, final):
         self._changes = copy.copy(changes)
         self._final = final
@@ -12,12 +12,12 @@ class LRSchedule:
     def lookup(self, position):
         for breakpt in self._changes:
             if position < breakpt.endpoint:
-                return breakpt.lr
+                return breakpt.value
         return self._final
 
     @classmethod
-    def fixed(cls, lr):
-        return cls([], lr)
+    def fixed(cls, value):
+        return cls([], value)
 
     @classmethod
     def from_dicts(cls, dictlist):
@@ -28,8 +28,8 @@ class LRSchedule:
                 final = dct['finally']
             else:
                 breakpoints.append(
-                    Breakpoint(endpoint=dct['until'], lr=float(dct['lr']))
+                    Breakpoint(endpoint=dct['until'], value=float(dct['value']))
                 )
         assert final is not None
         breakpoints.sort()
-        return LRSchedule(breakpoints, final)
+        return Schedule(breakpoints, final)
