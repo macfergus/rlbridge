@@ -10,6 +10,7 @@ import numpy as np
 
 from .. import kerasutil
 from ..bots import load_bot
+from ..game import ALL_DENOMINATIONS
 from ..mputil import disable_sigint
 from ..players import Player
 from ..rl import ExperienceRecorder
@@ -34,6 +35,8 @@ class BotPool:
         self.logger = logger
 
     def refresh(self):
+        # prevent all the workers from hitting the files at once
+        time.sleep(0.1 * random.random())
         new_learner = False
         data = json.load(open(self._fname))
         if self._ref_bot_names != data['ref']:
@@ -81,18 +84,41 @@ def generate_games(
         learn_bot = bot_pool.get_learn_bot()
         ref_bot = bot_pool.select_ref_bot()
 
-        max_contract = workspace.params.get_int('max_contract')
-
         learn_temp = config.get('learn_temperature', config.get('temperature'))
         ref_temp = config.get('ref_temperature', config.get('temperature'))
         if learn_temp is None:
             raise ValueError(f'Must set learn_temperature or temperature')
         if ref_temp is None:
             raise ValueError(f'Must set ref_temperature or temperature')
-        learn_bot.set_option('max_contract', max_contract)
         learn_bot.set_option('temperature', learn_temp)
-        ref_bot.set_option('max_contract', max_contract)
         ref_bot.set_option('temperature', ref_temp)
+
+        max_contract = workspace.params.get_int('max_contract')
+        mode = config['contract_limiting']['mode']
+        if mode == 'off':
+            max_contract = 7
+        elif mode == 'spread':
+            max_contract = random.randint(max_contract, 7)
+        learn_bot.set_option('max_contract', max_contract)
+        ref_bot.set_option('max_contract', max_contract)
+
+        force_pct = config.get('force_contract', {}).get('pct', 0.0)
+        force_fade = config.get('force_contract', {}).get('fadeout', 1)
+        age = learn_bot.metadata.get('num_games', 0)
+        fade = 1.0 - float(age) / float(force_fade)
+        force_contract_pct = max(0.0, force_pct * fade)
+        should_force_contract = random.random() < force_contract_pct
+        if should_force_contract:
+            tricks = random.randint(1, 7)
+            denom = random.choice(ALL_DENOMINATIONS)
+            declarer = random.choice([
+                Player.north, Player.east, Player.south, Player.west
+            ])
+            learn_bot.set_option('force_contract', (tricks, denom, declarer))
+            ref_bot.set_option('force_contract', (tricks, denom, declarer))
+        else:
+            learn_bot.set_option('force_contract', None)
+            ref_bot.set_option('force_contract', None)
 
         recorder = ExperienceRecorder()
         learn_side = random.choice(['ns', 'ew'])
@@ -236,31 +262,15 @@ class ExperienceGenerator:
         if n_hands >= 1000:
             self._logger.log(f'Made {made} contracts over {n_hands} hands')
             pct_made = np.mean(self._contract_history)
-            max_contract = self._workspace.params.get_int('max_contract', 1)
-            if (
-                    pct_made >= self._config['target_contracts_upper'] and
-                    max_contract < 7
-            ):
-                self._logger.log(
-                    f'Raising max contract to {max_contract + 1}'
-                )
-                self._workspace.params.set_int('max_contract', max_contract + 1)
-            if (
-                    pct_made < self._config['target_contracts_lower'] and
-                    max_contract > 1
-            ):
-                self._logger.log(
-                    f'Dropping max contract to {max_contract - 1}'
-                )
-                self._workspace.params.set_int('max_contract', max_contract - 1)
+            self._adjust_contract_limits(pct_made)
             self._contract_history = []
 
         # Manage the worker pool
         # Look for stuck workers, and reap any that shut themselves down
         # Then bring the pool back up to size
         now = time.time()
-        if now - self._last_recv > 30.0:
-            self._logger.log('Have not received a game in 30 seconds.')
+        if now - self._last_recv > 90.0:
+            self._logger.log('Have not received a game in 90 seconds.')
             self._logger.log('Replacing ALL workers')
             for k in list(self._workers.keys()):
                 self._stop_worker(k)
@@ -273,6 +283,17 @@ class ExperienceGenerator:
         while len(self._workers) < self._config['num_workers']:
             self._logger.log('Launching new worker')
             self._new_worker().proc.start()
+
+    def _adjust_contract_limits(self, pct_made):
+        max_contract = self._workspace.params.get_int('max_contract', 1)
+        upper = self._config['contract_limiting'].get('target_upper', 1.0)
+        lower = self._config['contract_limiting'].get('target_lower', 0.0)
+        if pct_made >= upper and max_contract < 7:
+            self._logger.log(f'Raising max contract to {max_contract + 1}')
+            self._workspace.params.set_int('max_contract', max_contract + 1)
+        elif pct_made < lower and max_contract > 1:
+            self._logger.log(f'Dropping max contract to {max_contract - 1}')
+            self._workspace.params.set_int('max_contract', max_contract - 1)
 
     def _stop_worker(self, k):
         stop_time = time.time()

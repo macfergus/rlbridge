@@ -24,6 +24,8 @@ class RLTest(unittest.TestCase):
             game=None,
             points_ns=200,
             points_ew=0,
+            tricks_ns=9,
+            tricks_ew=4,
             declarer=Player.north,
             contract_made=True,
             contract=Bid.of('2S')
@@ -66,6 +68,10 @@ class RLTest(unittest.TestCase):
         encoded_contract = np.array([0, 0, 0, 2.0 / 7.0, 0])
         assert_array_equal(encoded_contract, episode['contracts'][0])
         assert_array_equal(encoded_contract, episode['contracts'][1])
+        # tricks won: 9
+        assert_array_equal([9 / 13, 9 / 13], episode['tricks_won'])
+        # contract made: yes
+        assert_array_equal([1, 1], episode['contract_made'])
 
     def test_prepare_training_data(self):
         episode = {
@@ -88,7 +94,9 @@ class RLTest(unittest.TestCase):
             'contracts': np.array([
                 [0, 0, 0, 2 / 7, 0],
                 [0, 0, 0, 2 / 7, 0],
-            ])
+            ]),
+            'tricks_won': [9 / 13, 9 / 13],
+            'contract_made': [1, 1],
         }
         data = prepare_training_data(
             [episode],

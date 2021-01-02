@@ -55,7 +55,7 @@ def construct_model(
         kernel_regularizer=L2(regularization)
     )(game_state)
     play_output = Dense(
-        53, name='play_output', activity_regularizer=L2(0.01)
+        53, name='play_output', activity_regularizer=L2(regularization)
     )(play_hidden)
 
     value_hidden = Dense(
@@ -87,6 +87,19 @@ def construct_model(
         outputs.append(contract_output)
         losses['contract_output'] = 'mse'
         loss_weights['contract_output'] = 1.0
+    if 'tricks_won' in aux_outs:
+        tricks_output = Dense(1, name='tricks_output', activation='relu')(
+            game_state
+        )
+        outputs.append(tricks_output)
+        losses['tricks_output'] = 'mse'
+        loss_weights['tricks_output'] = 1.0
+    if 'contract_made' in aux_outs:
+        contract_made_output = Dense(
+            1, name='contract_made_output', activation='sigmoid'
+        )(game_state)
+        outputs.append(contract_made_output)
+        loss_weights['contract_made_output'] = 1.0
 
     model = Model(
         inputs=[game_input],

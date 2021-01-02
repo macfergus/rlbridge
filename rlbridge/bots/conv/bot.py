@@ -2,7 +2,7 @@ import numpy as np
 from keras.optimizers import SGD
 from tensorflow.keras.losses import CategoricalCrossentropy
 
-from ...game import Action, Phase
+from ...game import Action, Bid, Call, Phase
 from ...players import Player
 from ...rl import Decision, Episode, concat_episodes
 from ..base import Bot, UnrecognizedOptionError
@@ -14,6 +14,7 @@ __all__ = [
 
 
 def softmax(x):
+    x = np.clip(x, -20, 20)
     exp_x = np.exp(x)
     return exp_x / np.sum(exp_x)
 
@@ -85,6 +86,8 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
     calls_made = experience['calls_made'].reshape((-1, 1))
     plays_made = experience['plays_made'].reshape((-1, 1))
     contracts = experience['contracts']
+    tricks_won = experience['tricks_won'].reshape((-1, 1))
+    contract_made = experience['contract_made'].reshape((-1, 1))
 
     weight = advantages if use_advantage else rewards
 
@@ -107,6 +110,8 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
         'y_play': play_actions,
         'y_value': rewards,
         'y_contract': contracts,
+        'y_tricks': tricks_won,
+        'y_contract_made': contract_made,
     }
 
 
@@ -122,6 +127,8 @@ class ConvBot(Bot):
         self._compiled_lr = -1
         self._compiled_for_pretraining = False
 
+        self._force_contract = None
+
     def identify(self):
         return '{}_{:07d}'.format(
             self.name(),
@@ -133,6 +140,8 @@ class ConvBot(Bot):
             self._max_contract = int(value)
         elif key == 'temperature':
             self.temperature = float(value)
+        elif key == 'force_contract':
+            self._force_contract = value
         else:
             raise UnrecognizedOptionError(key)
 
@@ -149,6 +158,12 @@ class ConvBot(Bot):
         chosen_call = None
         chosen_play = None
         if state.phase == Phase.auction:
+            if self._force_contract is not None:
+                tricks, denom, declarer = self._force_contract
+                if state.next_decider == declarer:
+                    chosen_call = Call.make_bid(Bid(denom, tricks))
+                else:
+                    chosen_call = Call.pass_turn()
             call_p = calls.reshape((-1,))[1:]
             for call_index in sample(call_p, self.temperature):
                 call = self.encoder.decode_call_index(call_index)
@@ -209,6 +224,12 @@ class ConvBot(Bot):
         calls_made = np.zeros(n)
         plays_made = np.zeros(n)
         rewards = reward_amt * np.ones(n)
+        num_tricks_made = (
+            game_result.tricks_ns if perspective in (Player.north, Player.south)
+            else game_result.tricks_ew
+        )
+        tricks_won = (num_tricks_made / 13.0) * np.ones(n)
+        contract_made = float(game_result.contract_made) * np.ones(n)
         advantages = np.zeros(n)
 
         for i, decision in enumerate(decisions):
@@ -231,7 +252,9 @@ class ConvBot(Bot):
             plays_made=plays_made,
             advantages=advantages,
             rewards=rewards,
-            contracts=contracts
+            contracts=contracts,
+            tricks_won=tricks_won,
+            contract_made=contract_made
         )
 
     def encode_pretraining(self, game_record, perspective):
@@ -292,28 +315,45 @@ class ConvBot(Bot):
             **kwargs
         )
 
-    def train(self, episodes, lr=0.1, reinforce_only=False, use_advantage=True):
+    def train(
+            self,
+            episodes,
+            lr=0.1,
+            call_weight=1.0,
+            reinforce_only=False,
+            use_advantage=True
+    ):
         has_contract_output = 'contract_output' in self.model.output_names
-        if abs(self._compiled_lr - lr) > 1e-8:
-            losses = {
-                'call_output': CategoricalCrossentropy(from_logits=True),
-                'play_output': CategoricalCrossentropy(from_logits=True),
-                'value_output': 'mse',
-            }
-            loss_weights = {
-                'call_output': 1.0,
-                'play_output': 1.0,
-                'value_output': 0.1,
-            }
-            if has_contract_output:
-                losses['contract_output'] = 'mse'
-                loss_weights['contract_output'] = 1.0
-            self.model.compile(
-                optimizer=SGD(lr=lr, clipnorm=0.5),
-                loss=losses,
-                loss_weights=loss_weights
-            )
-            self._compiled_lr = lr
+        has_tricks_output = 'tricks_output' in self.model.output_names
+        has_contract_made_output = (
+            'contract_made_output' in self.model.output_names
+        )
+
+        losses = {
+            'call_output': CategoricalCrossentropy(from_logits=True),
+            'play_output': CategoricalCrossentropy(from_logits=True),
+            'value_output': 'mse',
+        }
+        loss_weights = {
+            'call_output': call_weight,
+            'play_output': 1.0,
+            'value_output': 0.1,
+        }
+        if has_contract_output:
+            losses['contract_output'] = 'mse'
+            loss_weights['contract_output'] = 1.0
+        if has_tricks_output:
+            losses['tricks_output'] = 'mse'
+            loss_weights['tricks_output'] = 1.0
+        if has_contract_made_output:
+            losses['contract_made_output'] = 'binary_crossentropy'
+            loss_weights['contract_made_output'] = 1.0
+        self.model.compile(
+            optimizer=SGD(lr=lr),
+            loss=losses,
+            loss_weights=loss_weights
+        )
+
         data = prepare_training_data(
             episodes,
             reinforce_only=reinforce_only,
@@ -326,6 +366,10 @@ class ConvBot(Bot):
         }
         if has_contract_output:
             y['contract_output'] = data['y_contract']
+        if has_tricks_output:
+            y['tricks_output'] = data['y_tricks']
+        if has_contract_made_output:
+            y['contract_made_output'] = data['y_contract_made']
         history = self.model.fit(
             data['X'],
             y,
@@ -341,4 +385,10 @@ class ConvBot(Bot):
         }
         if has_contract_output:
             res['contract_loss'] = history.history['contract_output_loss'][0]
+        if has_tricks_output:
+            res['tricks_loss'] = history.history['tricks_output_loss'][0]
+        if has_contract_made_output:
+            res['contract_made_loss'] = (
+                history.history['contract_made_output_loss'][0]
+            )
         return res

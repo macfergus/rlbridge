@@ -111,6 +111,13 @@ class TrainerImpl(Loopable):
         )
         if 'contract_loss' in hist:
             loss_stats += f' contract_loss {hist["contract_loss"]:.3f}'
+        if 'tricks_loss' in hist:
+            loss_stats += f' tricks_loss {hist["tricks_loss"]:.3f}'
+        if 'contract_made_loss' in hist:
+            loss_stats += (
+                ' contract_made_loss'
+                f' {hist["contract_made_loss"]:.3f}'
+            )
         self._logger.log(loss_stats)
 
         self._bot.add_games(self._num_games)

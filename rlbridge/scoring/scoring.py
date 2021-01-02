@@ -2,6 +2,7 @@ from ..game import Scale
 from ..players import Player, Side
 
 __all__ = [
+    'get_deal_result',
     'score_hand',
 ]
 
