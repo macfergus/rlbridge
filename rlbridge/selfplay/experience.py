@@ -123,6 +123,7 @@ def generate_games(
         recorder = ExperienceRecorder()
         learn_side = random.choice(['ns', 'ew'])
         made_contract = 0
+        n_games = learn_bot.metadata.get('num_games', 0)
 
         contract_bonus = 0
         if 'contract_bonus' in config:
@@ -130,12 +131,15 @@ def generate_games(
             strength = 1.0
             if 'contract_bonus_fadeout' in config:
                 fadeout = float(config['contract_bonus_fadeout'])
-                n_games = learn_bot.metadata.get('num_games', 0)
                 strength = 1.0 - float(n_games) / fadeout
                 strength = max(strength, 0.0)
             contract_bonus = strength * contract_bonus
         reward_scale = config.get('reward_scale', 'linear')
-    
+
+        trick_weight_fadeout = config.get('trick_weight_fadeout', 1.0)
+        trick_weight = 1.0 - float(n_games) / trick_weight_fadeout
+        trick_weight = max(trick_weight, 0.0)
+
         if learn_side == 'ns':
             game_result = simulate_game(
                 learn_bot, ref_bot, ns_recorder=recorder
@@ -153,14 +157,16 @@ def generate_games(
                 Player.north,
                 recorder.get_decisions(Player.north),
                 contract_bonus=contract_bonus,
-                reward_scale=reward_scale
+                reward_scale=reward_scale,
+                trick_weight=trick_weight
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.south,
                 recorder.get_decisions(Player.south),
                 contract_bonus=contract_bonus,
-                reward_scale=reward_scale
+                reward_scale=reward_scale,
+                trick_weight=trick_weight
             )
         else:
             game_result = simulate_game(
@@ -178,14 +184,16 @@ def generate_games(
                 Player.east,
                 recorder.get_decisions(Player.east),
                 contract_bonus=contract_bonus,
-                reward_scale=reward_scale
+                reward_scale=reward_scale,
+                trick_weight=trick_weight
             )
             episode2 = learn_bot.encode_episode(
                 game_result,
                 Player.west,
                 recorder.get_decisions(Player.west),
                 contract_bonus=contract_bonus,
-                reward_scale=reward_scale
+                reward_scale=reward_scale,
+                trick_weight=trick_weight
             )
         stat_q.put(made_contract)
         exp_q.put(episode1)

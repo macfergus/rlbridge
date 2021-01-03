@@ -60,6 +60,14 @@ def get_reward_points(game_result, perspective):
     return reward
 
 
+def get_reward_tricks(game_result, perspective):
+    if perspective in (Player.north, Player.south):
+        reward = 50.0 * game_result.tricks_ns
+    else:
+        reward = 50.0 * game_result.tricks_ew
+    return reward
+
+
 def get_reward_contracts(game_result, perspective):
     contract_made = game_result.contract_made
     is_declarer = (
@@ -129,6 +137,8 @@ class ConvBot(Bot):
 
         self._force_contract = None
 
+        self.last_output = {}
+
     def identify(self):
         return '{}_{:07d}'.format(
             self.name(),
@@ -154,6 +164,10 @@ class ConvBot(Bot):
         game_record = self.encoder.encode_full_game(state, state.next_player)
         X = game_record.reshape((-1,) + self.encoder.input_shape())
         outputs = self.model.predict(X)
+        all_outputs = {}
+        for name, output_val in zip(self.model.output_names, outputs):
+            all_outputs[name] = output_val[0]
+        self.last_outputs = all_outputs
         calls, plays, values = outputs[:3]
         chosen_call = None
         chosen_play = None
@@ -197,10 +211,12 @@ class ConvBot(Bot):
 
     def encode_episode(
             self, game_result, perspective, decisions, contract_bonus=0,
+            trick_weight=0.0,
             reward_scale='linear'
     ):
         reward_amt = (
-            get_reward_points(game_result, perspective) +
+            trick_weight * get_reward_tricks(game_result, perspective) +
+            (1 - trick_weight) * get_reward_points(game_result, perspective) +
             contract_bonus * get_reward_contracts(
                 game_result, perspective
             )
@@ -209,7 +225,7 @@ class ConvBot(Bot):
             sign = np.sign(reward_amt)
             reward_amt = sign * np.log(np.abs(reward_amt) + 1)
         elif reward_scale == 'linear':
-            reward_amt = reward_amt / 100.0
+            reward_amt = reward_amt / 200.0
         else:
             raise ValueError(reward_scale)
 
@@ -320,6 +336,7 @@ class ConvBot(Bot):
             episodes,
             lr=0.1,
             call_weight=1.0,
+            value_weight=0.1,
             reinforce_only=False,
             use_advantage=True
     ):
@@ -337,7 +354,7 @@ class ConvBot(Bot):
         loss_weights = {
             'call_output': call_weight,
             'play_output': 1.0,
-            'value_output': 0.1,
+            'value_output': value_weight,
         }
         if has_contract_output:
             losses['contract_output'] = 'mse'

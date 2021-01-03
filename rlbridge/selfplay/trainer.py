@@ -60,6 +60,12 @@ class TrainerImpl(Loopable):
             )
         else:
             self._lr_schedule = Schedule.fixed(self._config['lr'])
+        if 'call_weight' in self._config:
+            self._weight_schedule = Schedule.from_dicts(
+                self._config['call_weight']
+            )
+        else:
+            self._weight_schedule = Schedule.fixed(1)
 
         self._q = q
 
@@ -95,13 +101,19 @@ class TrainerImpl(Loopable):
         # When the chunk is big enough, train the current bot
         total_games = self._bot.metadata.get('num_games', 0)
         lr = self._lr_schedule.lookup(total_games)
+        call_weight = self._weight_schedule.lookup(total_games)
+        value_weight = self._config.get('value_weight', 0.1)
         self._logger.log(
             f'Training on {self._experience_size} examples from '
-            f'{self._num_games} games with learning rate {lr}'
+            f'{self._num_games} games with learning rate {lr} '
+            f'value_weight {value_weight} '
+            f'and call weight {call_weight}'
         )
         hist = self._bot.train(
             self._experience,
             lr=lr,
+            value_weight=value_weight,
+            call_weight=call_weight,
             use_advantage=self._config['use_advantage']
         )
         loss_stats = (

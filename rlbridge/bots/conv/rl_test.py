@@ -60,10 +60,10 @@ class RLTest(unittest.TestCase):
         assert_array_equal([1, 0], episode['calls_made'])
         # play_actions, plays_made
         assert_array_equal([0, 1], episode['plays_made'])
-        # rewards: 200 point diff / 100.0 scale == 2
-        assert_array_equal([2, 2], episode['rewards'])
+        # rewards: 200 point diff / 200.0 scale == 1
+        assert_array_equal([1, 1], episode['rewards'])
         # advantages
-        assert_array_equal([2, 1], episode['advantages'])
+        assert_array_equal([1, 0], episode['advantages'])
         # contracts: 2S
         encoded_contract = np.array([0, 0, 0, 2.0 / 7.0, 0])
         assert_array_equal(encoded_contract, episode['contracts'][0])

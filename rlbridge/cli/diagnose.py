@@ -42,7 +42,7 @@ class Diagnose(Command):
             tqdm.write(bot.identify())
             bot.set_option('temperature', 0.0)
 
-            for _ in tqdm(range(1000), leave=False):
+            for _ in tqdm(range(750), leave=False):
                 hand = GameState.new_deal(
                     cards.new_deal(),
                     dealer=Player.north,
@@ -51,6 +51,10 @@ class Diagnose(Command):
                 )
                 h = hand.deal.initial_hands[hand.next_decider]
                 action = bot.select_action(hand)
+                out = bot.last_outputs
+                expected_value = out['value_output'][0]
+                expected_tricks = out['tricks_output'][0]
+                expected_contract = out['contract_made_output'][0]
 
                 did_open = action.call.is_bid
                 hcp = high_card_points(h)
@@ -61,6 +65,9 @@ class Diagnose(Command):
                     'did_open': int(did_open),
                     'hcp': hcp,
                     'longest_suit': length,
+                    'ex_value': expected_value,
+                    'ex_tricks': expected_tricks,
+                    'ex_contract': expected_contract,
                 })
         df = pd.DataFrame(results)
         df.to_csv(args.out)
