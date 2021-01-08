@@ -66,6 +66,12 @@ class TrainerImpl(Loopable):
             )
         else:
             self._weight_schedule = Schedule.fixed(1)
+        if 'play_weight' in self._config:
+            self._play_schedule = Schedule.from_dicts(
+                self._config['play_weight']
+            )
+        else:
+            self._play_schedule = Schedule.fixed(1)
 
         self._q = q
 
@@ -102,18 +108,21 @@ class TrainerImpl(Loopable):
         total_games = self._bot.metadata.get('num_games', 0)
         lr = self._lr_schedule.lookup(total_games)
         call_weight = self._weight_schedule.lookup(total_games)
+        play_weight = self._play_schedule.lookup(total_games)
         value_weight = self._config.get('value_weight', 0.1)
         self._logger.log(
             f'Training on {self._experience_size} examples from '
             f'{self._num_games} games with learning rate {lr} '
             f'value_weight {value_weight} '
-            f'and call weight {call_weight}'
+            f'and call weight {call_weight} '
+            f'and play weight {play_weight}'
         )
         hist = self._bot.train(
             self._experience,
             lr=lr,
             value_weight=value_weight,
             call_weight=call_weight,
+            play_weight=play_weight,
             use_advantage=self._config['use_advantage']
         )
         loss_stats = (

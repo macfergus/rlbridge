@@ -124,9 +124,9 @@ def prepare_training_data(episodes, reinforce_only=False, use_advantage=True):
 
 
 class ConvBot(Bot):
-    def __init__(self, model, metadata):
+    def __init__(self, encoder, model, metadata):
         super().__init__(metadata)
-        self.encoder = Encoder()
+        self.encoder = encoder
         self.model = model
         self.temperature = 1.0
 
@@ -230,7 +230,7 @@ class ConvBot(Bot):
             raise ValueError(reward_scale)
 
         n = len(decisions)
-        states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
+        states = np.zeros((n,) + self.encoder.input_shape())
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
         contracts = np.tile(
@@ -277,7 +277,7 @@ class ConvBot(Bot):
         reward = get_reward_points(game_record, perspective)
         game = game_record.game
         n = game.num_states
-        states = np.zeros((n, self.encoder.GAME_LENGTH, self.encoder.DIM))
+        states = np.zeros((n,) + self.encoder.input_shape())
         calls = np.zeros((n, self.encoder.DIM_CALL_ACTION))
         plays = np.zeros((n, self.encoder.DIM_PLAY_ACTION))
         values = np.zeros(n)
@@ -336,6 +336,7 @@ class ConvBot(Bot):
             episodes,
             lr=0.1,
             call_weight=1.0,
+            play_weight=1.0,
             value_weight=0.1,
             reinforce_only=False,
             use_advantage=True
@@ -353,18 +354,18 @@ class ConvBot(Bot):
         }
         loss_weights = {
             'call_output': call_weight,
-            'play_output': 1.0,
+            'play_output': play_weight,
             'value_output': value_weight,
         }
         if has_contract_output:
             losses['contract_output'] = 'mse'
-            loss_weights['contract_output'] = 1.0
+            loss_weights['contract_output'] = 0.5
         if has_tricks_output:
             losses['tricks_output'] = 'mse'
-            loss_weights['tricks_output'] = 1.0
+            loss_weights['tricks_output'] = 0.5
         if has_contract_made_output:
             losses['contract_made_output'] = 'binary_crossentropy'
-            loss_weights['contract_made_output'] = 1.0
+            loss_weights['contract_made_output'] = 0.5
         self.model.compile(
             optimizer=SGD(lr=lr),
             loss=losses,
