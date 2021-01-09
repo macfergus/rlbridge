@@ -24,14 +24,28 @@ class WriteableBotPool:
 
         self.logger = logger
 
+        self._keep = True
+
     def get_learn_bot(self):
         return self.learn_bot
 
     def promote(self, new_best_bot):
         new_bot_fname = self._workspace.store_bot(new_best_bot)
-        # Keep the last 5 promoted bots
+        # Keep the last 5 promoted bots, plus half the previous N bots
+        # This lets us peek farther back into history, without keeping
+        # so many networks in memory
+        total = self._bots_to_keep
         self.ref_fnames.append(new_bot_fname)
-        self.ref_fnames = self.ref_fnames[-self._bots_to_keep:]
+        if len(self.ref_fnames) > 5:
+            keep_all = self.ref_fnames[-5:]
+            keep_some = self.ref_fnames[:-5]
+            rest = total - 5
+            if not self._keep:
+                keep_some = keep_some[:-1]
+            if len(keep_some) > rest:
+                keep_some = keep_some[-rest:]
+            self.ref_fnames = keep_some + keep_all
+            self._keep = not self._keep
         self.logger.log(f'Ref bots are: {self.ref_fnames}')
         self.learn_fname = new_bot_fname
 
