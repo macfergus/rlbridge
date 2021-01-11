@@ -27,7 +27,7 @@ def high_card_points(hand):
 
 def longest_suit(hand):
     counter = Counter([card.suit for card in hand])
-    return max(counter.values())
+    return counter.most_common()[0]
 
 
 class Diagnose(Command):
@@ -57,14 +57,22 @@ class Diagnose(Command):
                 expected_contract = out['contract_made_output'][0]
 
                 did_open = action.call.is_bid
+                open_suit = None
+                open_tricks = None
+                if did_open:
+                    open_suit = str(action.call.bid.denomination)
+                    open_tricks = action.call.bid.tricks
                 hcp = high_card_points(h)
-                length = longest_suit(h)
+                suit, length = longest_suit(h)
 
                 results.append({
                     'bot': bot.identify(),
                     'did_open': int(did_open),
+                    'open_suit': open_suit,
+                    'open_tricks': open_tricks,
                     'hcp': hcp,
-                    'longest_suit': length,
+                    'longest_suit': suit,
+                    'longest_length': length,
                     'ex_value': expected_value,
                     'ex_tricks': expected_tricks,
                     'ex_contract': expected_contract,
